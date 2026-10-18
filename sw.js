@@ -12,14 +12,13 @@ try{
   console.error('[sw.js] فشل تحميل OneSignal Worker:', e);
 }
 
-const CACHE_NAME = 'wazakkir-v2.29.0';
+const CACHE_NAME = 'wazakkir-v2.30.0';
 const STATIC_ASSETS = [
   'icons/icon-192.png',
   'icons/icon-512.png',
   'icons/favicon.png',
   'quran.json',
   'tafsir.json',
-  'muwatta.json',
   'https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Tajawal:wght@300;400;500;700;900&display=swap'
 ];
 

@@ -1496,6 +1496,8 @@ const CATEGORIES = [
   {id:'quran', name:'القرآن الكريم', icon:'📖', desc:'المصحف الشريف كاملاً', special:true, fullPage:true, view:'quran'},
   {id:'arbaeen', name:'الأربعون النووية', icon:'📜', desc:'الأحاديث الأربعون مع شرحها', special:true, fullPage:true, view:'arbaeen'},
   {id:'muwatta', name:'موطأ الإمام مالك', icon:'📚', desc:'رواية يحيى الليثي — ٦١ كتابًا و١٩٨٥ أثرًا', special:true, fullPage:true, view:'muwatta'},
+  {id:'abudawud', name:'سنن أبي داود', icon:'📘', desc:'٤٣ كتابًا — مع حكم الألباني وتعليق الإمام', special:true, fullPage:true, view:'abudawud'},
+  {id:'tirmidhi', name:'جامع الترمذي', icon:'📙', desc:'٤٩ كتابًا — مع حكم الترمذي والألباني', special:true, fullPage:true, view:'tirmidhi'},
   {id:'khatma', name:'ختمة', icon:'🔖', desc:'سجّل آخر موضع توقفت عنده في القرآن', special:true, fullPage:true, view:'khatma'},
   {id:'husoon', name:'الحصون الخمسة', icon:'🏰', desc:'خطة حفظ القرآن اليومية', special:true, fullPage:true, view:'husoon'},
 ];
@@ -1920,7 +1922,7 @@ NAWAFIL_GROUPS.forEach(g=>{ ZIKR[g.id] = g.items; });
 // ⚠️ ارفع هذا الرقم في كل مرة تعدّل فيها الملف، وارفع نفس الرقم أيضًا داخل
 // اسم CACHE_NAME في sw.js — بيظهر للمستخدم في أسفل الإعدادات ليعرف إنه
 // على آخر نسخة، ويشتغل مع شريط/زر "التحقق من التحديث".
-const APP_VERSION = '2.29.0';
+const APP_VERSION = '2.30.0';
 
 const LS_KEY='azkar_app_state_v1';
 let state = {
@@ -2128,7 +2130,7 @@ function updateAuthHeaderUI(){
 }
 
 const NAV_VIEWS = ['home','tasbih','qibla','settings'];
-const NAV_PARENT = {azkarhub:'home',sahihhub:'home',nawafilhub:'home',category:'home',friday:'home',quran:'home',arbaeen:'home',muwatta:'home',daeefa:'home',husoon:'home',khatma:'home',account:'settings',adminLogin:'settings',admin:'settings'};
+const NAV_PARENT = {azkarhub:'home',sahihhub:'home',nawafilhub:'home',category:'home',friday:'home',quran:'home',arbaeen:'home',muwatta:'home',abudawud:'home',tirmidhi:'home',daeefa:'home',husoon:'home',khatma:'home',account:'settings',adminLogin:'settings',admin:'settings'};
 function movePill(){
   const pill = document.getElementById('navPill');
   const active = document.querySelector('nav.bottom button.active');
@@ -2190,6 +2192,8 @@ function render(){
   else if(currentView==='quran') renderQuran();
   else if(currentView==='arbaeen') renderArbaeen();
   else if(currentView==='muwatta') renderMuwatta();
+  else if(currentView==='abudawud') renderAbudawud();
+  else if(currentView==='tirmidhi') renderTirmidhi();
   else if(currentView==='daeefa') renderDaeefa();
   else if(currentView==='husoon') renderHusoon();
   else if(currentView==='khatma') renderKhatma();
@@ -4093,145 +4097,168 @@ function renderArbaeen(){
 }
 
 
-/* ================= موطأ الإمام مالك — رواية يحيى الليثي (ترقيم محمد فؤاد عبد الباقي) =================
-   البيانات في ملف منفصل muwatta.json (حجمه كبير) يُحمَّل عند أول فتح للصفحة فقط.
-   شكل الملف: chapters:[[id,title]] — hadiths:[[num,chapterId,arabic,(english لو العربي غير متوفر)]]
-   sharh:{ "رقم الأثر": "نص الشرح" } — يظهر الشرح تلقائيًا تحت الأثر لو وُجد. */
-let MUWATTA_DATA = null;
-let muwView = 'index';      // 'index' | 'chapter'
-let muwChapter = 1;
-let muwPage = 0;
-let muwQuery = '';
-const MUW_PAGE_SIZE = 30;
+/* ================= مكتبة الحديث: موطأ مالك — سنن أبي داود — جامع الترمذي =================
+   كل كتاب في ملف مستقل يُحمَّل عند أول فتح فقط:  muwatta.json / abudawud.json / tirmidhi.json
+   صيغة الصف:  [رقم, معرّف الكتاب, نص الحديث, تعليق الإمام, حكم الألباني, حكم ثانٍ, (إنجليزي لو العربي غير متوفر)]
+   الشرح منفصل تمامًا عن النص في ملف اختياري:  sharh-<key>.json  بصيغة { "رقم الحديث": "الشرح" }
+   (لو الملف غير موجود يعمل التطبيق عادي بدون صندوق الشرح) */
+const LIB_BOOKS = {
+  muwatta:  {title:'موطأ الإمام مالك', icon:'📚', unit:'أثر',   hero:'رواية يحيى بن يحيى الليثي — ترقيم محمد فؤاد عبد الباقي', tag:'أقدم كتب الحديث والفقه المدوَّنة', comLabel:'', g2Label:''},
+  abudawud: {title:'سنن أبي داود',     icon:'📘', unit:'حديث', hero:'للإمام أبي داود السجستاني — مع حكم الألباني', tag:'النص منفصل عن تعليق الإمام وعن الحكم', comLabel:'تعليق الإمام أبي داود', g2Label:'الأرناؤوط'},
+  tirmidhi: {title:'جامع الترمذي',     icon:'📙', unit:'حديث', hero:'للإمام أبي عيسى الترمذي — مع حكم الألباني', tag:'النص منفصل عن حكم الترمذي وعن حكم الألباني', comLabel:'حكم الإمام الترمذي وتعليقه', g2Label:'بشار عواد'},
+};
+const LIB_PAGE_SIZE = 30;
+const LIB_STATE = {};
+Object.keys(LIB_BOOKS).forEach(k=>{ LIB_STATE[k] = {data:null, sharh:null, view:'index', chapter:null, page:0, query:''}; });
 
-async function ensureMuwattaLoaded(){
-  if(MUWATTA_DATA) return MUWATTA_DATA;
-  const res = await fetch('muwatta.json');
-  if(!res.ok) throw new Error('muwatta.json '+res.status);
+const libEsc = s => String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+// توحيد النص للبحث: إزالة التشكيل وتوحيد الألف والياء والتاء المربوطة
+const libNorm = s => String(s).replace(/[\u064B-\u0652\u0670\u0640]/g,'').replace(/[أإآٱ]/g,'ا').replace(/ى/g,'ي').replace(/ة/g,'ه');
+
+async function ensureLibLoaded(key){
+  const st = LIB_STATE[key];
+  if(st.data) return st.data;
+  const res = await fetch(key + '.json');
+  if(!res.ok) throw new Error(key + '.json ' + res.status);
   const d = await res.json();
-  d._byChapter = {};
+  d._byChapter = {}; d._chTitle = {};
   d.hadiths.forEach(h=>{ (d._byChapter[h[1]] = d._byChapter[h[1]] || []).push(h); });
-  d._chTitle = {};
   d.chapters.forEach(c=>{ d._chTitle[c[0]] = c[1]; });
-  MUWATTA_DATA = d;
+  st.data = d;
   return d;
 }
+// ملف الشرح اختياري: غيابه ليس خطأ
+async function ensureSharhLoaded(key){
+  const st = LIB_STATE[key];
+  if(st.sharh) return st.sharh;
+  try{
+    const res = await fetch('sharh-' + key + '.json');
+    st.sharh = res.ok ? await res.json() : {};
+  }catch(e){ st.sharh = {}; }
+  return st.sharh;
+}
 
-const muwEsc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-// توحيد النص للبحث: إزالة التشكيل وتوحيد الألف والياء والتاء المربوطة
-const muwNorm = s => String(s).replace(/[\u064B-\u0652\u0670\u0640]/g,'').replace(/[أإآٱ]/g,'ا').replace(/ى/g,'ي').replace(/ة/g,'ه');
-
-function renderMuwatta(){
+function renderLib(key){
+  const B = LIB_BOOKS[key], st = LIB_STATE[key];
   main.innerHTML = `
     <div class="cat-header">
-      <div class="back-btn" id="muwBack">→</div>
-      <h2>📚 موطأ الإمام مالك</h2>
+      <div class="back-btn" id="libBack">→</div>
+      <h2>${B.icon} ${B.title}</h2>
     </div>
     <div class="friday-hero">
-      <span class="fi">📚</span>
-      <h2>موطأ الإمام مالك</h2>
-      <p>رواية يحيى بن يحيى الليثي — ترقيم محمد فؤاد عبد الباقي<br>
-      <b style="color:var(--gold-300)">أقدم كتب الحديث والفقه المدوَّنة</b></p>
+      <span class="fi">${B.icon}</span>
+      <h2>${B.title}</h2>
+      <p>${B.hero}<br><b style="color:var(--gold-300)">${B.tag}</b></p>
     </div>
     <div class="search-wrap in-page" style="margin-bottom:14px;">
-      <input type="search" id="muwSearchInput" placeholder="ابحث في الموطأ بجزء من النص…" autocomplete="off" value="${muwEsc(muwQuery)}">
+      <input type="search" id="libSearchInput" placeholder="ابحث في نص الحديث بجزء من الكلام…" autocomplete="off" value="${libEsc(st.query)}">
       <span class="si">🔍</span>
     </div>
-    <div id="muwBody"><div class="note-box">⏳ جاري تحميل الموطأ...</div></div>
+    <div id="libBody"><div class="note-box">⏳ جاري التحميل (أول مرة فقط)...</div></div>
   `;
-  $('#muwBack').onclick = ()=>{
-    if(muwQuery){ muwQuery=''; $('#muwSearchInput').value=''; renderMuwattaBody(); }
-    else if(muwView==='chapter'){ muwView='index'; renderMuwattaBody(); window.scrollTo(0,0); }
+  $('#libBack').onclick = ()=>{
+    if(st.query){ st.query=''; $('#libSearchInput').value=''; renderLibBody(key); }
+    else if(st.view==='chapter'){ st.view='index'; renderLibBody(key); window.scrollTo(0,0); }
     else { currentView='home'; render(); }
   };
-  $('#muwSearchInput').oninput = e=>{ muwQuery = e.target.value.trim(); renderMuwattaBody(); };
-  ensureMuwattaLoaded().then(()=> renderMuwattaBody()).catch(()=>{
-    const b = $('#muwBody');
-    if(b) b.innerHTML = '<div class="note-box">⚠️ تعذّر تحميل ملف الموطأ (muwatta.json). تأكد من رفعه بجانب index.html على نفس الاستضافة.</div>';
+  $('#libSearchInput').oninput = e=>{ st.query = e.target.value.trim(); renderLibBody(key); };
+  Promise.all([ensureLibLoaded(key), ensureSharhLoaded(key)]).then(()=> renderLibBody(key)).catch(()=>{
+    const b = $('#libBody');
+    if(b) b.innerHTML = `<div class="note-box">⚠️ تعذّر تحميل ملف ${B.title} (${key}.json). تأكد من رفعه بجانب index.html على نفس الاستضافة.</div>`;
   });
 }
+const renderMuwatta = ()=>renderLib('muwatta');
+const renderAbudawud = ()=>renderLib('abudawud');
+const renderTirmidhi = ()=>renderLib('tirmidhi');
 
-function muwCardHTML(h, showChapter){
-  const D = MUWATTA_DATA;
-  const num = h[0], ar = h[2], en = h[3];
-  const sharh = D.sharh && D.sharh[num];
-  const chLine = showChapter ? `<div style="font-size:11px;color:var(--text-soft);margin:-4px 0 8px;text-align:center;">${muwEsc(D._chTitle[h[1]]||'')}</div>` : '';
+function libGradeChip(label, g, strong){
+  if(!g) return '';
+  const bad = /ضعيف|منكر|موضوع|شاذ|باطل/.test(g);
+  const col = bad ? '#b4503c' : 'var(--accent)';
+  return `<span style="display:inline-flex;gap:5px;align-items:center;padding:3px 10px;border-radius:10px;font-size:11.5px;font-weight:${strong?800:700};border:1px solid ${col};color:${col};">${label}: ${libEsc(g)}</span>`;
+}
+
+function libCardHTML(key, h){
+  const B = LIB_BOOKS[key], st = LIB_STATE[key], D = st.data;
+  const num = h[0], ar = h[2], com = h[3], ga = h[4], gb = h[5], en = h[6];
+  const sharh = st.sharh && st.sharh[num];
   let body;
   if(ar){
-    body = `<div class="text" style="font-family:'Amiri',serif;font-size:18px;line-height:2.2;text-align:right;">${muwEsc(ar)}</div>`;
+    body = `<div class="text" style="font-family:'Amiri',serif;font-size:18px;line-height:2.2;text-align:right;">${libEsc(ar)}</div>`;
   } else {
     body = `<div class="note-box">⚠️ النص العربي لهذا الأثر غير متوفر في المصدر المعتمد. المعنى بالإنجليزية:</div>
-            <div dir="ltr" style="font-size:13px;line-height:1.8;text-align:left;color:var(--text-soft);margin:8px 0;">${muwEsc(en||'')}</div>`;
+            <div dir="ltr" style="font-size:13px;line-height:1.8;text-align:left;color:var(--text-soft);margin:8px 0;">${libEsc(en||'')}</div>`;
   }
+  const grades = (ga||gb) ? `<div style="display:flex;flex-wrap:wrap;gap:6px;margin:4px 0 10px;">${libGradeChip('حكم الألباني', ga, true)}${libGradeChip(B.g2Label, gb, false)}</div>` : '';
+  const comBox = com ? `<details style="margin:0 0 10px;"><summary style="cursor:pointer;font-size:12.5px;font-weight:800;color:var(--accent);padding:4px 0;">📝 ${B.comLabel}</summary><div class="tafsir-box" style="font-family:'Amiri',serif;font-size:15px;line-height:2;">${libEsc(com)}</div></details>` : '';
+  const shBox = sharh ? `<div class="fadl-box">✨ <b>الشرح:</b> ${libEsc(sharh)}</div>` : '';
   return `
-    <div class="hadith-num-head"><span>الأثر رقم ${AR_DIG(num)}</span><small>${muwEsc(D._chTitle[h[1]]||'')}</small></div>
-    ${body}
-    ${sharh ? `<div class="fadl-box">✨ <b>الشرح:</b> ${muwEsc(sharh)}</div>` : ''}
+    <div class="hadith-num-head"><span>${B.unit==='أثر'?'الأثر':'الحديث'} رقم ${AR_DIG(num)}</span><small>${libEsc(D._chTitle[h[1]]||'')}</small></div>
+    ${body}${grades}${comBox}${shBox}
   `;
 }
 
-function renderMuwattaBody(){
-  const body = $('#muwBody');
-  if(!body || !MUWATTA_DATA) return;
-  const D = MUWATTA_DATA;
+function renderLibBody(key){
+  const B = LIB_BOOKS[key], st = LIB_STATE[key], body = $('#libBody');
+  if(!body || !st.data) return;
+  const D = st.data;
 
-  // ===== وضع البحث =====
-  if(muwQuery.length >= 2){
-    const q = muwNorm(muwQuery);
-    if(!D._norm) D._norm = D.hadiths.map(h=> muwNorm(h[2]));
+  // ===== وضع البحث (في نص الحديث نفسه) =====
+  if(st.query.length >= 2){
+    const q = libNorm(st.query);
+    if(!D._norm) D._norm = D.hadiths.map(h=> libNorm(h[2]));
     const hits = [];
-    for(let i=0;i<D.hadiths.length;i++){ if(D._norm[i].includes(q)){ hits.push(D.hadiths[i]); if(hits.length>=60) break; } }
+    for(let i=0;i<D.hadiths.length;i++){ if(D._norm[i].includes(q)){ hits.push(D.hadiths[i]); if(hits.length>=50) break; } }
     if(!hits.length){ body.innerHTML = '<div class="note-box">لا توجد نتائج مطابقة.</div>'; return; }
-    body.innerHTML = `<div class="note-box" style="margin-bottom:10px;">نتائج البحث: ${AR_DIG(hits.length)}${hits.length>=60?' (أول ٦٠ نتيجة — جرّب كلمات أدق)':''}</div>`;
+    body.innerHTML = `<div class="note-box" style="margin-bottom:10px;">نتائج البحث: ${AR_DIG(hits.length)}${hits.length>=50?' (أول ٥٠ نتيجة — جرّب كلمات أدق)':''}</div>`;
     hits.forEach(h=>{
-      const d = document.createElement('div'); d.className='zikr-card'; d.innerHTML = muwCardHTML(h, false);
+      const d = document.createElement('div'); d.className='zikr-card'; d.innerHTML = libCardHTML(key, h);
       body.appendChild(d);
     });
     return;
   }
 
   // ===== فهرس الكتب =====
-  if(muwView === 'index'){
-    body.innerHTML = `<div class="section-title" style="margin-top:0;"><span class="dot"></span>كتب الموطأ (${AR_DIG(D.chapters.length)} كتابًا — ${AR_DIG(D.hadiths.length)} أثرًا)</div><div id="muwList"></div>`;
-    const list = $('#muwList');
+  if(st.view === 'index'){
+    body.innerHTML = `<div class="section-title" style="margin-top:0;"><span class="dot"></span>${AR_DIG(D.chapters.length)} كتابًا — ${AR_DIG(D.hadiths.length)} ${B.unit==='أثر'?'أثرًا':'حديثًا'}</div><div id="libList"></div>`;
+    const list = $('#libList');
     D.chapters.forEach(c=>{
       const n = (D._byChapter[c[0]]||[]).length;
       const el = document.createElement('div');
       el.className = 'surah-index-item';
-      el.innerHTML = `<div class="surah-num">${AR_DIG(c[0])}</div><div class="surah-info"><div class="surah-name">${muwEsc(c[1])}</div><div class="surah-sub">${AR_DIG(n)} أثر</div></div><div class="surah-arrow">‹</div>`;
-      el.onclick = ()=>{ muwChapter=c[0]; muwPage=0; muwView='chapter'; renderMuwattaBody(); window.scrollTo(0,0); };
+      el.innerHTML = `<div class="surah-num">${AR_DIG(c[0])}</div><div class="surah-info"><div class="surah-name">${libEsc(c[1])}</div><div class="surah-sub">${AR_DIG(n)} ${B.unit}</div></div><div class="surah-arrow">‹</div>`;
+      el.onclick = ()=>{ st.chapter=c[0]; st.page=0; st.view='chapter'; renderLibBody(key); window.scrollTo(0,0); };
       list.appendChild(el);
     });
     return;
   }
 
-  // ===== صفحة كتاب (بترقيم صفحات لتخفيف الحمل) =====
-  const items = D._byChapter[muwChapter] || [];
-  const pages = Math.max(1, Math.ceil(items.length / MUW_PAGE_SIZE));
-  if(muwPage >= pages) muwPage = pages-1;
-  const slice = items.slice(muwPage*MUW_PAGE_SIZE, (muwPage+1)*MUW_PAGE_SIZE);
+  // ===== صفحة كتاب (ترقيم صفحات لتخفيف الحمل) =====
+  const items = D._byChapter[st.chapter] || [];
+  const pages = Math.max(1, Math.ceil(items.length / LIB_PAGE_SIZE));
+  if(st.page >= pages) st.page = pages-1;
+  const slice = items.slice(st.page*LIB_PAGE_SIZE, (st.page+1)*LIB_PAGE_SIZE);
   const nav = pages>1 ? `
     <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin:10px 0;">
-      <button class="chip" data-muwnav="next" ${muwPage>=pages-1?'disabled style="opacity:.4"':''}>التالي ›</button>
-      <span style="font-size:12px;color:var(--text-soft);font-weight:700;">صفحة ${AR_DIG(muwPage+1)} من ${AR_DIG(pages)}</span>
-      <button class="chip" data-muwnav="prev" ${muwPage<=0?'disabled style="opacity:.4"':''}>‹ السابق</button>
+      <button class="chip" data-libnav="next" ${st.page>=pages-1?'disabled style="opacity:.4"':''}>التالي ›</button>
+      <span style="font-size:12px;color:var(--text-soft);font-weight:700;">صفحة ${AR_DIG(st.page+1)} من ${AR_DIG(pages)}</span>
+      <button class="chip" data-libnav="prev" ${st.page<=0?'disabled style="opacity:.4"':''}>‹ السابق</button>
     </div>` : '';
-  body.innerHTML = `<div class="section-title" style="margin-top:0;"><span class="dot"></span>${muwEsc(D._chTitle[muwChapter]||'')}</div>${nav}<div id="muwItems"></div>${nav}`;
-  const wrap = $('#muwItems');
+  body.innerHTML = `<div class="section-title" style="margin-top:0;"><span class="dot"></span>${libEsc(D._chTitle[st.chapter]||'')}</div>${nav}<div id="libItems"></div>${nav}`;
+  const wrap = $('#libItems');
   slice.forEach(h=>{
-    const d = document.createElement('div'); d.className='zikr-card'; d.innerHTML = muwCardHTML(h, false);
+    const d = document.createElement('div'); d.className='zikr-card'; d.innerHTML = libCardHTML(key, h);
     wrap.appendChild(d);
   });
-  body.querySelectorAll('[data-muwnav]').forEach(b=>{
+  body.querySelectorAll('[data-libnav]').forEach(b=>{
     b.onclick = ()=>{
-      if(b.disabled || b.hasAttribute('disabled')) return;
-      muwPage += (b.dataset.muwnav==='next') ? 1 : -1;
-      renderMuwattaBody();
+      if(b.hasAttribute('disabled')) return;
+      st.page += (b.dataset.libnav==='next') ? 1 : -1;
+      renderLibBody(key);
       const hd = document.querySelector('.cat-header'); if(hd) hd.scrollIntoView({behavior:'smooth'});
     };
   });
 }
-
 
 /* ================= أحاديث ضعيفة/موضوعة مشهورة على الألسنة =================
    المصدر: كتاب "سلسلة الأحاديث الضعيفة والموضوعة" للشيخ محمد ناصر الدين
