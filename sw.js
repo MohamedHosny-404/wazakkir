@@ -12,7 +12,7 @@ try{
   console.error('[sw.js] فشل تحميل OneSignal Worker:', e);
 }
 
-const CACHE_NAME = 'wazakkir-v2.31.0';
+const CACHE_NAME = 'wazakkir-v2.31.1';
 const STATIC_ASSETS = [
   'icons/icon-192.png',
   'icons/icon-512.png',
@@ -83,10 +83,14 @@ self.addEventListener('fetch', event => {
   // "opaque response" (status=0) لأنها cross-origin بدون CORS، فمينفعش
   // نتأكد من status===200 زي باقي الملفات — لازم نكاشها برضه عشان الاستماع
   // بدون نت يشتغل فعلًا، فبنتأكد بس إن الطلب نجح (مفيش استثناء) قبل الكاش
+  // نكاشي فقط: ملفات نفس الموقع + المصادر المعروفة (خطوط/صوتيات) — أي مصدر غريب لا يُكاش
+  const reqUrl = new URL(event.request.url);
+  const sameOrigin = reqUrl.origin === self.location.origin;
+  const trusted = sameOrigin || /(^|\.)(fonts\.googleapis\.com|fonts\.gstatic\.com|everyayah\.com|mp3quran\.net)$/.test(reqUrl.hostname);
   event.respondWith(
     caches.match(event.request).then(cached => {
       return cached || fetch(event.request).then(response => {
-        if (response && (response.status === 200 || response.type === 'opaque')) {
+        if (trusted && response && (response.status === 200 || response.type === 'opaque')) {
           const clone = response.clone();
           caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
         }

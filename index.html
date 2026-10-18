@@ -18,6 +18,9 @@
 <meta property="og:description" content="أذكار الصباح والمساء والنوم والسفر والطعام — تطبيق إسلامي متكامل">
 <meta property="og:image" content="icons/icon-512.png">
 <meta name="mobile-web-app-capable" content="yes">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://cdn.onesignal.com https://*.onesignal.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https:; media-src 'self' blob: https://everyayah.com https://*.mp3quran.net; connect-src 'self' https://*.googleapis.com https://www.gstatic.com https://*.firebaseio.com https://*.firebaseapp.com https://api.aladhan.com https://nominatim.openstreetmap.org https://everyayah.com https://*.mp3quran.net https://*.onesignal.com; frame-src 'self' https://*.firebaseapp.com https://*.onesignal.com; worker-src 'self' blob:; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<script>if(window.top!==window.self){try{window.top.location=window.self.location;}catch(e){document.documentElement.style.display='none';}}</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Tajawal:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 <style>
@@ -1187,41 +1190,10 @@ nav.bottom button{ min-width:0; white-space:nowrap; }
 
 <!-- ============================================================
      نظام تسجيل الدخول ولوحة تحكم الأدمن (Firebase Auth + Firestore)
-     ⚠️ لازم تعمل الخطوات دي الأول عشان يشتغل:
-     1) اعمل مشروع على https://console.firebase.google.com
-     2) فعّل Authentication > Sign-in method > Email/Password
-     3) فعّل Firestore Database (Production mode)
-     4) روح Project settings > عمل Web App وهياديك القيم اللي تحت (firebaseConfig) — استبدلها
-     5) اعمل حساب أدمن يدويًا: من Authentication > Add user
-        Email: admin_mmm@wazakkir.app   Password: mmm111
-        (لو غيرت اليوزر "MMM" غيّر الإيميل بنفس الباترن: admin_<اليوزر بحروف صغيرة>@wazakkir.app)
-     6) انسخ الـ UID بتاع الحساب ده، وروح Firestore واعمل Collection اسمها admins
-        وحط فيه document بنفس الـ UID (أي محتوى بداخله، مثلاً field role:"admin")
-     7) حط الـ Security Rules دي في Firestore Rules:
-
-     rules_version = '2';
-     service cloud.firestore {
-       match /databases/{database}/documents {
-         function isAdmin() {
-           return request.auth != null &&
-             exists(/databases/$(database)/documents/admins/$(request.auth.uid));
-         }
-         match /users/{userId} {
-           allow get, update: if request.auth != null && (request.auth.uid == userId || isAdmin());
-           allow create: if request.auth != null && request.auth.uid == userId;
-           allow list: if isAdmin();
-         }
-         match /admins/{adminId} {
-           allow get: if request.auth != null && request.auth.uid == adminId;
-         }
-         // محتوى التطبيق (الأذكار وأي بيانات تانية) — كل حد يقدر يقرأها
-         // (عشان تتحمّل حتى قبل تسجيل الدخول) بس التعديل مقصور على الأدمن فقط
-         match /content/{key} {
-           allow read: if true;
-           allow write: if request.auth != null && isAdmin();
-         }
-       }
-     }
+     إعداد الأدمن: من Firebase Console > Authentication أنشئ حساب الأدمن بكلمة مرور قوية
+     (16 حرفًا فأكثر) وانسخ الـ UID، ثم أنشئ في Firestore مستند admins/<UID>.
+     ⚠️ لا تكتب أي بيانات دخول داخل الكود أبدًا.
+     قواعد الأمان الكاملة والمشددة موجودة في ملف firestore.rules المرفق بالمشروع.
      ============================================================ -->
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
@@ -1232,7 +1204,7 @@ nav.bottom button{ min-width:0; white-space:nowrap; }
   } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
   import {
     getFirestore, doc, setDoc, getDoc, updateDoc, collection, getDocs,
-    serverTimestamp, query, orderBy
+    serverTimestamp, query, orderBy, deleteField
   } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
   // أسماء مستندات محتوى التطبيق القابلة للتعديل من لوحة الأدمن — أي مجموعة
@@ -1277,7 +1249,7 @@ nav.bottom button{ min-width:0; white-space:nowrap; }
       if(!isValidEmail(email)) throw new Error('البريد الإلكتروني غير صحيح');
       if(!password || !confirmPassword) throw new Error('من فضلك اكتب كلمة المرور وتأكيدها');
       if(password !== confirmPassword) throw new Error('كلمة المرور وتأكيدها غير متطابقين');
-      if(password.length < 6) throw new Error('كلمة المرور يجب أن تكون 6 أحرف على الأقل');
+      if(password.length < 8) throw new Error('كلمة المرور يجب أن تكون 8 أحرف على الأقل');
       const cleanPhone = phone.replace(/\D/g,'');
       if(cleanPhone.length !== 11) throw new Error('رقم الهاتف يجب أن يكون 11 رقمًا بالضبط');
       const cleanEmail = email.trim().toLowerCase();
@@ -1289,7 +1261,7 @@ nav.bottom button{ min-width:0; white-space:nowrap; }
         throw new Error('حدث خطأ أثناء إنشاء الحساب');
       }
       await setDoc(doc(db,'users',cred.user.uid), {
-        name: name.trim(), gender, phone: cleanPhone, email: cleanEmail, password,
+        name: name.trim(), gender, phone: cleanPhone, email: cleanEmail,
         createdAt: serverTimestamp(), lastLogin: serverTimestamp()
       });
       return cred.user;
@@ -1351,9 +1323,22 @@ nav.bottom button{ min-width:0; white-space:nowrap; }
       if(!window.WZAuth.isAdmin) throw new Error('غير مصرح لك بهذا الإجراء');
       await setDoc(doc(db,'users',uid), {
         disabled:true, disabledAt: serverTimestamp(),
-        name: null, phone: null, email: null, password: null, appState: null
+        name: null, phone: null, email: null, password: deleteField(), appState: null
       }, { merge:true });
       return true;
+    },
+
+    // تنظيف: مسح أي كلمات مرور قديمة كانت مخزنة بنص صريح في مستندات المستخدمين
+    async purgeStoredPasswords(){
+      if(!window.WZAuth.isAdmin) return 0;
+      const snap = await getDocs(collection(db,'users'));
+      let n = 0;
+      for(const d of snap.docs){
+        if(Object.prototype.hasOwnProperty.call(d.data(),'password')){
+          try{ await updateDoc(doc(db,'users',d.id), { password: deleteField() }); n++; }catch(e){}
+        }
+      }
+      return n;
     },
 
     async myProfile(uid){
@@ -1413,6 +1398,7 @@ nav.bottom button{ min-width:0; white-space:nowrap; }
     if(user){
       const adminDoc = await getDoc(doc(db,'admins',user.uid)).catch(()=>null);
       window.WZAuth.isAdmin = !!(adminDoc && adminDoc.exists());
+      if(window.WZAuth.isAdmin){ window.WZAuth.purgeStoredPasswords().then(n=>{ if(n) console.info('[security] cleared '+n+' stored passwords'); }).catch(()=>{}); }
       // لو الحساب اتحذف من الأدمن وهو لسه فاتح جلسة قديمة على الجهاز ده،
       // نقفلها فورًا بدل ما نسيبه شغال بحساب متحذوف
       if(!window.WZAuth.isAdmin){
@@ -1923,7 +1909,7 @@ NAWAFIL_GROUPS.forEach(g=>{ ZIKR[g.id] = g.items; });
 // ⚠️ ارفع هذا الرقم في كل مرة تعدّل فيها الملف، وارفع نفس الرقم أيضًا داخل
 // اسم CACHE_NAME في sw.js — بيظهر للمستخدم في أسفل الإعدادات ليعرف إنه
 // على آخر نسخة، ويشتغل مع شريط/زر "التحقق من التحديث".
-const APP_VERSION = '2.31.0';
+const APP_VERSION = '2.31.1';
 
 const LS_KEY='azkar_app_state_v1';
 let state = {
@@ -2411,15 +2397,14 @@ function renderAdminUsersTab(){
     if(!users.length){ el.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-soft);">لا يوجد مستخدمين بعد</div>'; return; }
     el.innerHTML = `<div style="padding:0 12px 10px;font-size:12px;color:var(--text-soft);">عدد المستخدمين: ${users.length}</div>` + users.map(u=>`
       <div class="settings-group" style="padding:12px;margin-bottom:10px;${u.disabled?'opacity:.55;':''}">
-        <div style="font-weight:800;margin-bottom:6px;">${u.disabled?'🚫 (محذوف) ':''}${u.name||'-'}</div>
+        <div style="font-weight:800;margin-bottom:6px;">${u.disabled?'🚫 (محذوف) ':''}${escapeHtml(u.name||'-')}</div>
         <div style="font-size:12.5px;color:var(--text-soft);line-height:1.9;">
-          📱 ${u.phone||'-'} &nbsp; | &nbsp; ⚧ ${u.gender==='male'?'ذكر':u.gender==='female'?'أنثى':'-'}<br>
-          📧 ${u.email||'-'}<br>
-          🔑 ${u.password||'-'}<br>
+          📱 ${escapeHtml(u.phone||'-')} &nbsp; | &nbsp; ⚧ ${u.gender==='male'?'ذكر':u.gender==='female'?'أنثى':'-'}<br>
+          📧 ${escapeHtml(u.email||'-')}<br>
           🕓 آخر دخول: ${fmtTs(u.lastLogin)}<br>
           📅 تاريخ التسجيل: ${fmtTs(u.createdAt)}
         </div>
-        ${u.disabled ? '' : `<button class="act-btn admin-del-user-btn" data-uid="${u.id}" data-name="${escapeHtml(u.name||'هذا المستخدم')}" style="width:100%;padding:8px;margin-top:10px;background:#c0392b22;color:#c0392b;">🗑️ حذف الحساب</button>`}
+        ${u.disabled ? '' : `<button class="act-btn admin-del-user-btn" data-uid="${escapeHtml(u.id)}" data-name="${escapeHtml(u.name||'هذا المستخدم')}" style="width:100%;padding:8px;margin-top:10px;background:#c0392b22;color:#c0392b;">🗑️ حذف الحساب</button>`}
       </div>
     `).join('');
     el.querySelectorAll('.admin-del-user-btn').forEach(btn=>{
@@ -5691,8 +5676,17 @@ function cacheContentOverride(key, data){
   }catch(e){}
 }
 
+function wzCleanContent(v){
+  if(typeof v==='string') return v.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/&amp;(amp|lt|gt|quot|#\d+);/g,'&$1;');
+  if(Array.isArray(v)) return v.map(wzCleanContent);
+  if(v && typeof v==='object'){
+    const o={}; Object.keys(v).forEach(k=>{ if(k==='__proto__'||k==='constructor'||k==='prototype') return; o[k]=wzCleanContent(v[k]); }); return o;
+  }
+  return v;
+}
 function applyContentOverride(key, data, fromCache){
   try{
+    data = wzCleanContent(data);
     if(key==='ZIKR' && data && typeof data==='object' && !Array.isArray(data)){
       Object.keys(ZIKR).forEach(k=>{ if(!(k in data)) delete ZIKR[k]; });
       Object.keys(data).forEach(k=>{ ZIKR[k] = data[k]; });
