@@ -1498,6 +1498,7 @@ const CATEGORIES = [
   {id:'muwatta', name:'موطأ الإمام مالك', icon:'📚', desc:'رواية يحيى الليثي — ٦١ كتابًا و١٩٨٥ أثرًا', special:true, fullPage:true, view:'muwatta'},
   {id:'abudawud', name:'سنن أبي داود', icon:'📘', desc:'٤٣ كتابًا — مع حكم الألباني وتعليق الإمام', special:true, fullPage:true, view:'abudawud'},
   {id:'tirmidhi', name:'جامع الترمذي', icon:'📙', desc:'٤٩ كتابًا — مع حكم الترمذي والألباني', special:true, fullPage:true, view:'tirmidhi'},
+  {id:'fiqh', name:'الفقه الحنبلي', icon:'⚖️', desc:'منهج السالكين وتوضيح الفقه في الدين — للشيخ السعدي', special:true, fullPage:true, view:'fiqh'},
   {id:'khatma', name:'ختمة', icon:'🔖', desc:'سجّل آخر موضع توقفت عنده في القرآن', special:true, fullPage:true, view:'khatma'},
   {id:'husoon', name:'الحصون الخمسة', icon:'🏰', desc:'خطة حفظ القرآن اليومية', special:true, fullPage:true, view:'husoon'},
 ];
@@ -1922,7 +1923,7 @@ NAWAFIL_GROUPS.forEach(g=>{ ZIKR[g.id] = g.items; });
 // ⚠️ ارفع هذا الرقم في كل مرة تعدّل فيها الملف، وارفع نفس الرقم أيضًا داخل
 // اسم CACHE_NAME في sw.js — بيظهر للمستخدم في أسفل الإعدادات ليعرف إنه
 // على آخر نسخة، ويشتغل مع شريط/زر "التحقق من التحديث".
-const APP_VERSION = '2.30.0';
+const APP_VERSION = '2.31.0';
 
 const LS_KEY='azkar_app_state_v1';
 let state = {
@@ -2130,7 +2131,7 @@ function updateAuthHeaderUI(){
 }
 
 const NAV_VIEWS = ['home','tasbih','qibla','settings'];
-const NAV_PARENT = {azkarhub:'home',sahihhub:'home',nawafilhub:'home',category:'home',friday:'home',quran:'home',arbaeen:'home',muwatta:'home',abudawud:'home',tirmidhi:'home',daeefa:'home',husoon:'home',khatma:'home',account:'settings',adminLogin:'settings',admin:'settings'};
+const NAV_PARENT = {azkarhub:'home',sahihhub:'home',nawafilhub:'home',category:'home',friday:'home',quran:'home',arbaeen:'home',muwatta:'home',abudawud:'home',tirmidhi:'home',fiqh:'home',daeefa:'home',husoon:'home',khatma:'home',account:'settings',adminLogin:'settings',admin:'settings'};
 function movePill(){
   const pill = document.getElementById('navPill');
   const active = document.querySelector('nav.bottom button.active');
@@ -2194,6 +2195,7 @@ function render(){
   else if(currentView==='muwatta') renderMuwatta();
   else if(currentView==='abudawud') renderAbudawud();
   else if(currentView==='tirmidhi') renderTirmidhi();
+  else if(currentView==='fiqh') renderFiqh();
   else if(currentView==='daeefa') renderDaeefa();
   else if(currentView==='husoon') renderHusoon();
   else if(currentView==='khatma') renderKhatma();
@@ -4255,6 +4257,127 @@ function renderLibBody(key){
       if(b.hasAttribute('disabled')) return;
       st.page += (b.dataset.libnav==='next') ? 1 : -1;
       renderLibBody(key);
+      const hd = document.querySelector('.cat-header'); if(hd) hd.scrollIntoView({behavior:'smooth'});
+    };
+  });
+}
+
+/* ================= الفقه الحنبلي: منهج السالكين وتوضيح الفقه في الدين =================
+   الكتاب في ملف مستقل manhaj.json يُحمَّل عند أول فتح فقط (عشان التطبيق ميكبرش).
+   الصيغة: { "chapters": [[رقم, "كتاب الطهارة"], ...],
+             "items":    [[رقم الكتاب, "عنوان الباب أو الفصل (أو فاضي)", "نص الفقرة"], ...] }  */
+const FIQH_PAGE_SIZE = 12;
+const FIQH_STATE = {data:null, view:'index', chapter:null, page:0, query:''};
+
+async function ensureFiqhLoaded(){
+  if(FIQH_STATE.data) return FIQH_STATE.data;
+  const res = await fetch('manhaj.json');
+  if(!res.ok) throw new Error('manhaj.json ' + res.status);
+  const d = await res.json();
+  d._by = {}; d._title = {};
+  d.items.forEach(it=>{ (d._by[it[0]] = d._by[it[0]] || []).push(it); });
+  d.chapters.forEach(c=>{ d._title[c[0]] = c[1]; });
+  FIQH_STATE.data = d;
+  return d;
+}
+
+function renderFiqh(){
+  const st = FIQH_STATE;
+  main.innerHTML = `
+    <div class="cat-header">
+      <div class="back-btn" id="fiqhBack">→</div>
+      <h2>⚖️ الفقه الحنبلي</h2>
+    </div>
+    <div class="friday-hero">
+      <span class="fi">⚖️</span>
+      <h2>منهج السالكين وتوضيح الفقه في الدين</h2>
+      <p>للعلامة عبد الرحمن بن ناصر السعدي رحمه الله<br><b style="color:var(--gold-300)">مختصر في الفقه على المذهب الحنبلي</b></p>
+    </div>
+    <div class="search-wrap in-page" style="margin-bottom:14px;">
+      <input type="search" id="fiqhSearchInput" placeholder="ابحث في نص الكتاب بجزء من الكلام…" autocomplete="off" value="${libEsc(st.query)}">
+      <span class="si">🔍</span>
+    </div>
+    <div id="fiqhBody"><div class="note-box">⏳ جاري التحميل (أول مرة فقط)...</div></div>
+  `;
+  $('#fiqhBack').onclick = ()=>{
+    if(st.query){ st.query=''; $('#fiqhSearchInput').value=''; renderFiqhBody(); }
+    else if(st.view==='chapter'){ st.view='index'; renderFiqhBody(); window.scrollTo(0,0); }
+    else { currentView='home'; render(); }
+  };
+  $('#fiqhSearchInput').oninput = e=>{ st.query = e.target.value.trim(); renderFiqhBody(); };
+  ensureFiqhLoaded().then(()=> renderFiqhBody()).catch(()=>{
+    const b = $('#fiqhBody');
+    if(b) b.innerHTML = '<div class="note-box">⚠️ تعذّر تحميل الكتاب (manhaj.json). تأكد من رفعه بجانب index.html على نفس الاستضافة.</div>';
+  });
+}
+
+function fiqhCardHTML(it, showChapter, showHead){
+  const D = FIQH_STATE.data;
+  const head = (it[1] && showHead!==false) ? `<div style="font-weight:800;color:var(--accent);font-size:14px;margin-bottom:6px;">${libEsc(it[1])}</div>` : '';
+  const ch = showChapter ? `<div style="font-size:11px;color:var(--text-soft);margin-bottom:4px;">${libEsc(D._title[it[0]]||'')}</div>` : '';
+  return `${ch}${head}<div class="text" style="font-family:'Amiri',serif;font-size:18px;line-height:2.2;text-align:right;white-space:pre-line;">${libEsc(it[2])}</div>`;
+}
+
+function renderFiqhBody(){
+  const st = FIQH_STATE, body = $('#fiqhBody');
+  if(!body || !st.data) return;
+  const D = st.data;
+  if(!D.items.length){ body.innerHTML = '<div class="note-box">ملف الكتاب (manhaj.json) فارغ حاليًا.</div>'; return; }
+
+  // ===== وضع البحث =====
+  if(st.query.length >= 2){
+    const q = libNorm(st.query);
+    if(!D._norm) D._norm = D.items.map(it=> libNorm(it[1] + ' ' + it[2]));
+    const hits = [];
+    for(let i=0;i<D.items.length;i++){ if(D._norm[i].includes(q)){ hits.push(D.items[i]); if(hits.length>=50) break; } }
+    if(!hits.length){ body.innerHTML = '<div class="note-box">لا توجد نتائج مطابقة.</div>'; return; }
+    body.innerHTML = `<div class="note-box" style="margin-bottom:10px;">نتائج البحث: ${AR_DIG(hits.length)}${hits.length>=50?' (أول ٥٠ نتيجة — جرّب كلمات أدق)':''}</div>`;
+    hits.forEach(it=>{
+      const d = document.createElement('div'); d.className='zikr-card'; d.innerHTML = fiqhCardHTML(it, true);
+      body.appendChild(d);
+    });
+    return;
+  }
+
+  // ===== فهرس الكتب =====
+  if(st.view === 'index'){
+    body.innerHTML = `<div class="section-title" style="margin-top:0;"><span class="dot"></span>${AR_DIG(D.chapters.length)} كتابًا</div><div id="fiqhList"></div>`;
+    const list = $('#fiqhList');
+    D.chapters.forEach(c=>{
+      const n = (D._by[c[0]]||[]).length;
+      const el = document.createElement('div');
+      el.className = 'surah-index-item';
+      el.innerHTML = `<div class="surah-num">${AR_DIG(c[0])}</div><div class="surah-info"><div class="surah-name">${libEsc(c[1])}</div><div class="surah-sub">${AR_DIG(n)} فقرة</div></div><div class="surah-arrow">‹</div>`;
+      el.onclick = ()=>{ st.chapter=c[0]; st.page=0; st.view='chapter'; renderFiqhBody(); window.scrollTo(0,0); };
+      list.appendChild(el);
+    });
+    return;
+  }
+
+  // ===== صفحة كتاب (ترقيم صفحات) =====
+  const items = D._by[st.chapter] || [];
+  const pages = Math.max(1, Math.ceil(items.length / FIQH_PAGE_SIZE));
+  if(st.page >= pages) st.page = pages-1;
+  const slice = items.slice(st.page*FIQH_PAGE_SIZE, (st.page+1)*FIQH_PAGE_SIZE);
+  const nav = pages>1 ? `
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin:10px 0;">
+      <button class="chip" data-fiqhnav="next" ${st.page>=pages-1?'disabled style="opacity:.4"':''}>التالي ›</button>
+      <span style="font-size:12px;color:var(--text-soft);font-weight:700;">صفحة ${AR_DIG(st.page+1)} من ${AR_DIG(pages)}</span>
+      <button class="chip" data-fiqhnav="prev" ${st.page<=0?'disabled style="opacity:.4"':''}>‹ السابق</button>
+    </div>` : '';
+  body.innerHTML = `<div class="section-title" style="margin-top:0;"><span class="dot"></span>${libEsc(D._title[st.chapter]||'')}</div>${nav}<div id="fiqhItems"></div>${nav}`;
+  const wrap = $('#fiqhItems');
+  let prevHead = st.page>0 ? ((items[st.page*FIQH_PAGE_SIZE-1]||[])[1]||'') : '';
+  slice.forEach(it=>{
+    const d = document.createElement('div'); d.className='zikr-card'; d.innerHTML = fiqhCardHTML(it, false, it[1]!==prevHead);
+    prevHead = it[1];
+    wrap.appendChild(d);
+  });
+  body.querySelectorAll('[data-fiqhnav]').forEach(b=>{
+    b.onclick = ()=>{
+      if(b.hasAttribute('disabled')) return;
+      st.page += (b.dataset.fiqhnav==='next') ? 1 : -1;
+      renderFiqhBody();
       const hd = document.querySelector('.cat-header'); if(hd) hd.scrollIntoView({behavior:'smooth'});
     };
   });
