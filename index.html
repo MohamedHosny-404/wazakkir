@@ -1242,6 +1242,7 @@ nav.bottom button{ min-width:0; white-space:nowrap; }
 
     // كل الحقول دي إجبارية — الحساب مش هيتعمل غير لما تتملى كلها وتكون صحيحة
     async register({name, gender, phone, email, password, confirmPassword}){
+      throw new Error('التسجيل غير متاح');
       if(!name || !name.trim()) throw new Error('من فضلك اكتب الاسم');
       if(!gender) throw new Error('من فضلك اختر النوع');
       if(!phone || !phone.trim()) throw new Error('من فضلك اكتب رقم الهاتف');
@@ -1268,6 +1269,7 @@ nav.bottom button{ min-width:0; white-space:nowrap; }
     },
 
     async login(phone, password){
+      throw new Error('تسجيل دخول المستخدمين غير متاح');
       if(!phone || !phone.trim()) throw new Error('من فضلك اكتب رقم الهاتف');
       if(!password) throw new Error('من فضلك اكتب كلمة المرور');
       const cleanPhone = phone.replace(/\D/g,'');
@@ -1398,23 +1400,15 @@ nav.bottom button{ min-width:0; white-space:nowrap; }
     if(user){
       const adminDoc = await getDoc(doc(db,'admins',user.uid)).catch(()=>null);
       window.WZAuth.isAdmin = !!(adminDoc && adminDoc.exists());
-      if(window.WZAuth.isAdmin){ window.WZAuth.purgeStoredPasswords().then(n=>{ if(n) console.info('[security] cleared '+n+' stored passwords'); }).catch(()=>{}); }
-      // لو الحساب اتحذف من الأدمن وهو لسه فاتح جلسة قديمة على الجهاز ده،
-      // نقفلها فورًا بدل ما نسيبه شغال بحساب متحذوف
       if(!window.WZAuth.isAdmin){
-        const profileDoc = await getDoc(doc(db,'users',user.uid)).catch(()=>null);
-        if(profileDoc && profileDoc.exists() && profileDoc.data().disabled){
-          window.WZAuth.currentUser = null;
-          await signOut(auth);
-          if(typeof window.onWZAccountDisabled==='function') window.onWZAccountDisabled();
-          if(typeof window.onWZAuthReady==='function') window.onWZAuthReady();
-          return;
-        }
+        // الدخول للأدمن فقط: أي جلسة قديمة لمستخدم عادي تُقفل بصمت (التقدّم المحلي على الجهاز يفضل زي ما هو)
+        window.WZAuth.currentUser = null;
+        try{ await signOut(auth); }catch(e){}
+      } else {
+        window.WZAuth.purgeStoredPasswords().then(n=>{ if(n) console.info('[security] cleared '+n+' stored passwords'); }).catch(()=>{});
       }
-      await syncUserProgressAfterLogin(user);
     } else {
       window.WZAuth.isAdmin = false;
-      if(typeof window.onWZUserLoggedOut==='function') window.onWZUserLoggedOut();
     }
     if(typeof window.onWZAuthReady==='function') window.onWZAuthReady();
   });
@@ -1443,7 +1437,6 @@ nav.bottom button{ min-width:0; white-space:nowrap; }
         </div>
       </div>
       <div style="display:flex;gap:8px;align-items:center;">
-        <button class="icon-btn" id="loginBtn" title="تسجيل الدخول" style="display:none;width:auto;padding:0 12px;font-size:12.5px;font-weight:800;white-space:nowrap;">🔑 تسجيل الدخول</button>
         <button class="icon-btn" id="themeBtn" title="الوضع الليلي">🌙</button>
         <button class="icon-btn" id="settingsBtn" title="الإعدادات">⚙️</button>
       </div>
@@ -1480,10 +1473,11 @@ const CATEGORIES = [
   {id:'afterprayer', name:'أذكار بعد الصلاة', icon:'🤲', desc:'أذكار ما بعد الفريضة'},
   {id:'friday', name:'يوم الجمعة', icon:'🌿', desc:'سورة الكهف والصلاة على النبي', special:true},
   {id:'quran', name:'القرآن الكريم', icon:'📖', desc:'المصحف الشريف كاملاً', special:true, fullPage:true, view:'quran'},
-  {id:'arbaeen', name:'الأربعون النووية', icon:'📜', desc:'الأحاديث الأربعون مع شرحها', special:true, fullPage:true, view:'arbaeen'},
-  {id:'muwatta', name:'موطأ الإمام مالك', icon:'📚', desc:'رواية يحيى الليثي — ٦١ كتابًا و١٩٨٥ أثرًا', special:true, fullPage:true, view:'muwatta'},
-  {id:'abudawud', name:'سنن أبي داود', icon:'📘', desc:'٤٣ كتابًا — مع حكم الألباني وتعليق الإمام', special:true, fullPage:true, view:'abudawud'},
-  {id:'tirmidhi', name:'جامع الترمذي', icon:'📙', desc:'٤٩ كتابًا — مع حكم الترمذي والألباني', special:true, fullPage:true, view:'tirmidhi'},
+  {id:'hadithhub', name:'كتب الحديث', icon:'📚', desc:'الأربعون النووية — موطأ مالك — سنن أبي داود — جامع الترمذي', special:true, fullPage:true, view:'hadithhub'},
+  {id:'arbaeen', name:'الأربعون النووية', icon:'📜', desc:'الأحاديث الأربعون مع شرحها', special:true, fullPage:true, view:'arbaeen', inHadithHub:true},
+  {id:'muwatta', name:'موطأ الإمام مالك', icon:'📚', desc:'رواية يحيى الليثي — ٦١ كتابًا و١٩٨٥ أثرًا', special:true, fullPage:true, view:'muwatta', inHadithHub:true},
+  {id:'abudawud', name:'سنن أبي داود', icon:'📘', desc:'٤٣ كتابًا — مع حكم الألباني وتعليق الإمام', special:true, fullPage:true, view:'abudawud', inHadithHub:true},
+  {id:'tirmidhi', name:'جامع الترمذي', icon:'📙', desc:'٤٩ كتابًا — مع حكم الترمذي والألباني', special:true, fullPage:true, view:'tirmidhi', inHadithHub:true},
   {id:'fiqh', name:'الفقه الحنبلي', icon:'⚖️', desc:'منهج السالكين وتوضيح الفقه في الدين — للشيخ السعدي', special:true, fullPage:true, view:'fiqh'},
   {id:'khatma', name:'ختمة', icon:'🔖', desc:'سجّل آخر موضع توقفت عنده في القرآن', special:true, fullPage:true, view:'khatma'},
   {id:'husoon', name:'الحصون الخمسة', icon:'🏰', desc:'خطة حفظ القرآن اليومية', special:true, fullPage:true, view:'husoon'},
@@ -1909,7 +1903,7 @@ NAWAFIL_GROUPS.forEach(g=>{ ZIKR[g.id] = g.items; });
 // ⚠️ ارفع هذا الرقم في كل مرة تعدّل فيها الملف، وارفع نفس الرقم أيضًا داخل
 // اسم CACHE_NAME في sw.js — بيظهر للمستخدم في أسفل الإعدادات ليعرف إنه
 // على آخر نسخة، ويشتغل مع شريط/زر "التحقق من التحديث".
-const APP_VERSION = '2.31.1';
+const APP_VERSION = '2.32.0';
 
 const LS_KEY='azkar_app_state_v1';
 let state = {
@@ -1936,11 +1930,6 @@ function save(){
   localStorage.setItem(LS_KEY, JSON.stringify(state));
   // لو المستخدم مسجّل دخول، نرفع تقدمه لحسابه (بعد تأخير بسيط عشان منعملش
   // طلب لكل ضغطة) عشان لو فتح حسابه من أي جهاز تاني يلاقي نفس التقدم بالظبط
-  if(window.WZAuth && window.WZAuth.currentUser){
-    _statePendingSync = true;
-    clearTimeout(_stateSyncTimer);
-    _stateSyncTimer = setTimeout(flushStateSync, 1200);
-  }
 }
 // يرفع أي تقدم لسه متأخّر فورًا لحساب المستخدم — بيتنادى عند الحفظ العادي
 // (بعد التأخير) وكمان بالإجبار لما المستخدم يقفل التطبيق أو يسيب الصفحة،
@@ -1948,9 +1937,8 @@ function save(){
 function flushStateSync(){
   clearTimeout(_stateSyncTimer);
   if(!_statePendingSync) return;
-  if(!(window.WZAuth && window.WZAuth.currentUser)) return;
-  _statePendingSync = false;
-  window.WZAuth.saveMyState(window.WZAuth.currentUser.uid, state);
+  _statePendingSync = false; // التقدّم محلي على الجهاز فقط — لا مزامنة سحابية
+  return;
 }
 // أي لحظة ممكن يتقفل فيها التطبيق أو يتحط في الخلفية (خصوصًا على الموبايل،
 // اللي بيوقف تنفيذ الجافاسكريبت فورًا)، نضمن إن آخر تقدم اترفع فعلاً
@@ -2105,7 +2093,6 @@ function applyColor(){
 
 function applyTheme(){ applyColor(); }
 $('#themeBtn').onclick = ()=>{ state.theme = state.theme==='dark'?'light':'dark'; applyTheme(); save(); };
-$('#loginBtn').onclick = ()=>{ currentView='account'; currentCat=null; render(); };
 
 // يظهر زر "تسجيل الدخول" أعلى يسار الشاشة طول ما المستخدم مش مسجّل دخول،
 // ويختفي أول ما يسجّل دخول
@@ -2117,7 +2104,7 @@ function updateAuthHeaderUI(){
 }
 
 const NAV_VIEWS = ['home','tasbih','qibla','settings'];
-const NAV_PARENT = {azkarhub:'home',sahihhub:'home',nawafilhub:'home',category:'home',friday:'home',quran:'home',arbaeen:'home',muwatta:'home',abudawud:'home',tirmidhi:'home',fiqh:'home',daeefa:'home',husoon:'home',khatma:'home',account:'settings',adminLogin:'settings',admin:'settings'};
+const NAV_PARENT = {azkarhub:'home',sahihhub:'home',nawafilhub:'home',category:'home',friday:'home',quran:'home',hadithhub:'home',arbaeen:'home',muwatta:'home',abudawud:'home',tirmidhi:'home',fiqh:'home',daeefa:'home',husoon:'home',khatma:'home',account:'settings',adminLogin:'settings',admin:'settings'};
 function movePill(){
   const pill = document.getElementById('navPill');
   const active = document.querySelector('nav.bottom button.active');
@@ -2177,6 +2164,7 @@ function render(){
   else if(currentView==='category') renderCategory(currentCat);
   else if(currentView==='friday') renderFriday();
   else if(currentView==='quran') renderQuran();
+  else if(currentView==='hadithhub') renderHadithHub();
   else if(currentView==='arbaeen') renderArbaeen();
   else if(currentView==='muwatta') renderMuwatta();
   else if(currentView==='abudawud') renderAbudawud();
@@ -2188,7 +2176,7 @@ function render(){
   else if(currentView==='tasbih') renderTasbih();
   else if(currentView==='qibla') renderQibla();
   else if(currentView==='settings') renderSettings();
-  else if(currentView==='account') renderAccount();
+  else if(currentView==='account'){ currentView = (window.WZAuth && window.WZAuth.isAdmin) ? 'admin' : 'home'; render(); }
   else if(currentView==='adminLogin') renderAdminLogin();
   else if(currentView==='admin') renderAdminPanel();
   if(_animate){ main.classList.remove('page-anim'); void main.offsetWidth; main.classList.add('page-anim'); }
@@ -2199,7 +2187,6 @@ function render(){
 window.onWZAuthReady = function(){
   updateAuthHeaderUI();
   if(currentView==='account' || currentView==='admin') render();
-  maybeShowLoginPrompt();
 };
 
 // ===== مربع تذكير بتسجيل الدخول =====
@@ -2385,7 +2372,9 @@ function renderAdminPanel(){
       <button class="act-btn" id="adminTabContent" style="flex:1;${adminTab==='content'?'':'opacity:.55;'}">📝 تعديل المحتوى</button>
     </div>
     <div id="adminBody" style="padding:0 4px;">جارِ التحميل...</div>
+    <div style="padding:14px 4px 0;"><button class="act-btn" id="adminLogoutBtn" style="width:100%;padding:10px;">🚪 تسجيل خروج الأدمن</button></div>
   `;
+  $('#adminLogoutBtn').onclick = async ()=>{ await window.WZAuth.logout(); toast('تم تسجيل الخروج'); currentView='home'; render(); };
   $('#adminTabUsers').onclick = ()=>{ adminTab='users'; renderAdminPanel(); };
   $('#adminTabContent').onclick = ()=>{ adminTab='content'; renderAdminPanel(); };
   if(adminTab==='content') renderAdminContentTab(); else renderAdminUsersTab();
@@ -2672,7 +2661,7 @@ function renderHome(){
   const streakBadgeEl = $('#streakBadge');
   if(streakBadgeEl) streakBadgeEl.onclick = ()=>{ currentView='tasbih'; render(); };
   const grid = $('#catGrid');
-  CATEGORIES.filter(c=>!c.group).forEach((c,ci)=>{
+  CATEGORIES.filter(c=>!c.group && !c.inHadithHub).forEach((c,ci)=>{
     const el = document.createElement('div');
     el.className='cat-card';
     if(c.special){
@@ -4069,7 +4058,7 @@ function renderArbaeen(){
     </div>
     <div id="arbaeenList"></div>
   `;
-  $('#arbaeenBack').onclick = ()=>{ currentView='home'; render(); };
+  $('#arbaeenBack').onclick = ()=>{ currentView='hadithhub'; render(); };
   const list = $('#arbaeenList');
   ARBAEEN_HADITH.forEach(h=>{
     const d = document.createElement('div');
@@ -4086,7 +4075,7 @@ function renderArbaeen(){
 
 /* ================= مكتبة الحديث: موطأ مالك — سنن أبي داود — جامع الترمذي =================
    كل كتاب في ملف مستقل يُحمَّل عند أول فتح فقط:  muwatta.json / abudawud.json / tirmidhi.json
-   صيغة الصف:  [رقم, معرّف الكتاب, نص الحديث, تعليق الإمام, حكم الألباني, حكم ثانٍ, (إنجليزي لو العربي غير متوفر)]
+   صيغة الصف:  [رقم, معرّف الكتاب, المتن (نص الحديث بدون السند), تعليق الإمام, حكم الألباني, حكم ثانٍ, (إنجليزي لو العربي غير متوفر), الإسناد]
    الشرح منفصل تمامًا عن النص في ملف اختياري:  sharh-<key>.json  بصيغة { "رقم الحديث": "الشرح" }
    (لو الملف غير موجود يعمل التطبيق عادي بدون صندوق الشرح) */
 const LIB_BOOKS = {
@@ -4146,12 +4135,36 @@ function renderLib(key){
   $('#libBack').onclick = ()=>{
     if(st.query){ st.query=''; $('#libSearchInput').value=''; renderLibBody(key); }
     else if(st.view==='chapter'){ st.view='index'; renderLibBody(key); window.scrollTo(0,0); }
-    else { currentView='home'; render(); }
+    else { currentView='hadithhub'; render(); }
   };
   $('#libSearchInput').oninput = e=>{ st.query = e.target.value.trim(); renderLibBody(key); };
   Promise.all([ensureLibLoaded(key), ensureSharhLoaded(key)]).then(()=> renderLibBody(key)).catch(()=>{
     const b = $('#libBody');
     if(b) b.innerHTML = `<div class="note-box">⚠️ تعذّر تحميل ملف ${B.title} (${key}.json). تأكد من رفعه بجانب index.html على نفس الاستضافة.</div>`;
+  });
+}
+function renderHadithHub(){
+  const ids = ['arbaeen','muwatta','abudawud','tirmidhi'];
+  const items = ids.map(id=>CATEGORIES.find(c=>c.id===id)).filter(Boolean);
+  main.innerHTML = `
+    <div class="cat-header">
+      <div class="back-btn" id="hhBack">→</div>
+      <h2>📚 كتب الحديث</h2>
+    </div>
+    <div class="friday-hero">
+      <span class="fi">📚</span>
+      <h2>كتب الحديث</h2>
+      <p>الأربعون النووية — موطأ مالك — سنن أبي داود — جامع الترمذي<br><b style="color:var(--gold-300)">النص والإسناد وتعليق الإمام والحكم كلٌّ منفصل</b></p>
+    </div>
+    <div class="hub-grid" id="hhGrid"></div>`;
+  $('#hhBack').onclick = ()=>{ currentView='home'; render(); };
+  items.forEach((c,i)=>{
+    const el = document.createElement('div');
+    el.className = 'cat-card hub-card';
+    el.innerHTML = `<div class="ic">${c.icon}</div><h3>${c.name}</h3><p>${c.desc}</p>`;
+    el.querySelector('.ic').style.setProperty('--tint', TINTS[i % TINTS.length]);
+    el.onclick = ()=>{ currentView = c.view; render(); };
+    $('#hhGrid').appendChild(el);
   });
 }
 const renderMuwatta = ()=>renderLib('muwatta');
@@ -4167,7 +4180,7 @@ function libGradeChip(label, g, strong){
 
 function libCardHTML(key, h){
   const B = LIB_BOOKS[key], st = LIB_STATE[key], D = st.data;
-  const num = h[0], ar = h[2], com = h[3], ga = h[4], gb = h[5], en = h[6];
+  const num = h[0], ar = h[2], com = h[3], ga = h[4], gb = h[5], en = h[6], isn = h[7];
   const sharh = st.sharh && st.sharh[num];
   let body;
   if(ar){
@@ -4176,12 +4189,13 @@ function libCardHTML(key, h){
     body = `<div class="note-box">⚠️ النص العربي لهذا الأثر غير متوفر في المصدر المعتمد. المعنى بالإنجليزية:</div>
             <div dir="ltr" style="font-size:13px;line-height:1.8;text-align:left;color:var(--text-soft);margin:8px 0;">${libEsc(en||'')}</div>`;
   }
+  const isnBox = isn ? `<details style="margin:0 0 10px;"><summary style="cursor:pointer;font-size:12.5px;font-weight:800;color:var(--accent);padding:4px 0;">🔗 الإسناد</summary><div class="tafsir-box" style="font-family:'Amiri',serif;font-size:15px;line-height:2.1;text-align:right;">${libEsc(isn)}</div></details>` : '';
   const grades = (ga||gb) ? `<div style="display:flex;flex-wrap:wrap;gap:6px;margin:4px 0 10px;">${libGradeChip('حكم الألباني', ga, true)}${libGradeChip(B.g2Label, gb, false)}</div>` : '';
   const comBox = com ? `<details style="margin:0 0 10px;"><summary style="cursor:pointer;font-size:12.5px;font-weight:800;color:var(--accent);padding:4px 0;">📝 ${B.comLabel}</summary><div class="tafsir-box" style="font-family:'Amiri',serif;font-size:15px;line-height:2;">${libEsc(com)}</div></details>` : '';
   const shBox = sharh ? `<div class="fadl-box">✨ <b>الشرح:</b> ${libEsc(sharh)}</div>` : '';
   return `
     <div class="hadith-num-head"><span>${B.unit==='أثر'?'الأثر':'الحديث'} رقم ${AR_DIG(num)}</span><small>${libEsc(D._chTitle[h[1]]||'')}</small></div>
-    ${body}${grades}${comBox}${shBox}
+    ${body}${isnBox}${grades}${comBox}${shBox}
   `;
 }
 
@@ -5133,12 +5147,6 @@ function renderStats(){
 /* ===== SETTINGS ===== */
 function renderSettings(){
   main.innerHTML = `
-    <div class="section-title"><span class="dot"></span>الحساب</div>
-    <div class="settings-group">
-      <div class="settings-row"><div class="l"><span class="ic">👤</span>حسابي / تسجيل الدخول</div><button class="act-btn" id="goAccountBtn">فتح</button></div>
-      <div class="settings-row"><div class="l"><span class="ic">🔐</span>دخول الإدارة</div><button class="act-btn" id="goAdminLoginBtn">دخول</button></div>
-    </div>
-
     <div class="section-title"><span class="dot"></span>المظهر</div>
     <div class="settings-group">
       <div class="settings-row"><div class="l"><span class="ic">🌙</span>الوضع الليلي</div><div class="switch ${state.theme==='dark'?'on':''}" id="darkSwitch"></div></div>
@@ -5265,10 +5273,17 @@ function renderSettings(){
       </div>
     </div>
 
-    <div class="footer-credit">تم التصميم والتطوير بواسطة <b class="dev-name-link" id="devNameLink">م/محمد حسني</b><br>وَذَكِّر — الإصدار ${APP_VERSION}</div>
+    <div class="footer-credit">تم التصميم والتطوير بواسطة <b class="dev-name-link" id="devNameLink">م/محمد حسني</b><br>وَذَكِّر — الإصدار <span id="verTap">${APP_VERSION}</span></div>
   `;
-  $('#goAccountBtn').onclick = ()=>{ currentView='account'; render(); };
-  $('#goAdminLoginBtn').onclick = ()=>{ currentView='adminLogin'; render(); };
+  // دخول الإدارة مخفي: ٧ ضغطات متتالية على رقم الإصدار أسفل الإعدادات
+  (function(){
+    const v = document.getElementById('verTap'); if(!v) return;
+    let taps = 0, tm = null;
+    v.onclick = ()=>{
+      taps++; clearTimeout(tm); tm = setTimeout(()=>{ taps = 0; }, 2500);
+      if(taps >= 7){ taps = 0; currentView = (window.WZAuth && window.WZAuth.isAdmin) ? 'admin' : 'adminLogin'; render(); }
+    };
+  })();
   $('#darkSwitch').onclick = ()=>{ state.theme = state.theme==='dark'?'light':'dark'; applyTheme(); save(); renderSettings(); };
   document.querySelectorAll('.color-dot').forEach(dot=>{
     dot.onclick = ()=>{
