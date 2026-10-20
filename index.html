@@ -1473,11 +1473,13 @@ const CATEGORIES = [
   {id:'afterprayer', name:'أذكار بعد الصلاة', icon:'🤲', desc:'أذكار ما بعد الفريضة'},
   {id:'friday', name:'يوم الجمعة', icon:'🌿', desc:'سورة الكهف والصلاة على النبي', special:true},
   {id:'quran', name:'القرآن الكريم', icon:'📖', desc:'المصحف الشريف كاملاً', special:true, fullPage:true, view:'quran'},
-  {id:'hadithhub', name:'كتب الحديث', icon:'📚', desc:'الأربعون النووية — موطأ مالك — سنن أبي داود — جامع الترمذي', special:true, fullPage:true, view:'hadithhub'},
+  {id:'hadithhub', name:'كتب الحديث', icon:'📚', desc:'الأربعون النووية — موطأ مالك — سنن أبي داود — جامع الترمذي — سنن النسائي — سنن ابن ماجه', special:true, fullPage:true, view:'hadithhub'},
   {id:'arbaeen', name:'الأربعون النووية', icon:'📜', desc:'الأحاديث الأربعون مع شرحها', special:true, fullPage:true, view:'arbaeen', inHadithHub:true},
   {id:'muwatta', name:'موطأ الإمام مالك', icon:'📚', desc:'رواية يحيى الليثي — ٦١ كتابًا و١٩٨٥ أثرًا', special:true, fullPage:true, view:'muwatta', inHadithHub:true},
   {id:'abudawud', name:'سنن أبي داود', icon:'📘', desc:'٤٣ كتابًا — مع حكم الألباني وتعليق الإمام', special:true, fullPage:true, view:'abudawud', inHadithHub:true},
   {id:'tirmidhi', name:'جامع الترمذي', icon:'📙', desc:'٤٩ كتابًا — مع حكم الترمذي والألباني', special:true, fullPage:true, view:'tirmidhi', inHadithHub:true},
+  {id:'nasai', name:'سنن النسائي', icon:'📗', desc:'٥١ كتابًا — مع حكم الألباني وأبي غدة', special:true, fullPage:true, view:'nasai', inHadithHub:true},
+  {id:'ibnmajah', name:'سنن ابن ماجه', icon:'📕', desc:'٣٨ كتابًا — مع حكم الألباني والأرناؤوط', special:true, fullPage:true, view:'ibnmajah', inHadithHub:true},
   {id:'fiqh', name:'الفقه الحنبلي', icon:'⚖️', desc:'منهج السالكين وتوضيح الفقه في الدين — للشيخ السعدي', special:true, fullPage:true, view:'fiqh'},
   {id:'khatma', name:'ختمة', icon:'🔖', desc:'سجّل آخر موضع توقفت عنده في القرآن', special:true, fullPage:true, view:'khatma'},
   {id:'husoon', name:'الحصون الخمسة', icon:'🏰', desc:'خطة حفظ القرآن اليومية', special:true, fullPage:true, view:'husoon'},
@@ -2104,7 +2106,7 @@ function updateAuthHeaderUI(){
 }
 
 const NAV_VIEWS = ['home','tasbih','qibla','settings'];
-const NAV_PARENT = {azkarhub:'home',sahihhub:'home',nawafilhub:'home',category:'home',friday:'home',quran:'home',hadithhub:'home',arbaeen:'home',muwatta:'home',abudawud:'home',tirmidhi:'home',fiqh:'home',daeefa:'home',husoon:'home',khatma:'home',account:'settings',adminLogin:'settings',admin:'settings'};
+const NAV_PARENT = {azkarhub:'home',sahihhub:'home',nawafilhub:'home',category:'home',friday:'home',quran:'home',hadithhub:'home',arbaeen:'home',muwatta:'home',abudawud:'home',tirmidhi:'home',nasai:'home',ibnmajah:'home',fiqh:'home',daeefa:'home',husoon:'home',khatma:'home',account:'settings',adminLogin:'settings',admin:'settings'};
 function movePill(){
   const pill = document.getElementById('navPill');
   const active = document.querySelector('nav.bottom button.active');
@@ -2169,6 +2171,8 @@ function render(){
   else if(currentView==='muwatta') renderMuwatta();
   else if(currentView==='abudawud') renderAbudawud();
   else if(currentView==='tirmidhi') renderTirmidhi();
+  else if(currentView==='nasai') renderNasai();
+  else if(currentView==='ibnmajah') renderIbnMajah();
   else if(currentView==='fiqh') renderFiqh();
   else if(currentView==='daeefa') renderDaeefa();
   else if(currentView==='husoon') renderHusoon();
@@ -4073,7 +4077,7 @@ function renderArbaeen(){
 }
 
 
-/* ================= مكتبة الحديث: موطأ مالك — سنن أبي داود — جامع الترمذي =================
+/* ================= مكتبة الحديث: موطأ مالك — سنن أبي داود — جامع الترمذي — سنن النسائي — سنن ابن ماجه =================
    كل كتاب في ملف مستقل يُحمَّل عند أول فتح فقط:  muwatta.json / abudawud.json / tirmidhi.json
    صيغة الصف:  [رقم, معرّف الكتاب, المتن (نص الحديث بدون السند), تعليق الإمام, حكم الألباني, حكم ثانٍ, (إنجليزي لو العربي غير متوفر), الإسناد]
    الشرح منفصل تمامًا عن النص في ملف اختياري:  sharh-<key>.json  بصيغة { "رقم الحديث": "الشرح" }
@@ -4082,6 +4086,8 @@ const LIB_BOOKS = {
   muwatta:  {title:'موطأ الإمام مالك', icon:'📚', unit:'أثر',   hero:'رواية يحيى بن يحيى الليثي — ترقيم محمد فؤاد عبد الباقي', tag:'أقدم كتب الحديث والفقه المدوَّنة', comLabel:'', g2Label:''},
   abudawud: {title:'سنن أبي داود',     icon:'📘', unit:'حديث', hero:'للإمام أبي داود السجستاني — مع حكم الألباني', tag:'النص منفصل عن تعليق الإمام وعن الحكم', comLabel:'تعليق الإمام أبي داود', g2Label:'الأرناؤوط'},
   tirmidhi: {title:'جامع الترمذي',     icon:'📙', unit:'حديث', hero:'للإمام أبي عيسى الترمذي — مع حكم الألباني', tag:'النص منفصل عن حكم الترمذي وعن حكم الألباني', comLabel:'حكم الإمام الترمذي وتعليقه', g2Label:'بشار عواد'},
+  nasai:    {title:'سنن النسائي',      icon:'📗', unit:'حديث', hero:'للإمام أبي عبد الرحمن النسائي (المجتبى) — مع حكم الألباني', tag:'النص منفصل عن الإسناد وعن الحكم', comLabel:'', g2Label:'أبو غدة'},
+  ibnmajah: {title:'سنن ابن ماجه',     icon:'📕', unit:'حديث', hero:'للإمام ابن ماجه القزويني — مع حكم الألباني', tag:'النص منفصل عن الإسناد وعن الحكم', comLabel:'', g2Label:'الأرناؤوط'},
 };
 const LIB_PAGE_SIZE = 30;
 const LIB_STATE = {};
@@ -4144,7 +4150,7 @@ function renderLib(key){
   });
 }
 function renderHadithHub(){
-  const ids = ['arbaeen','muwatta','abudawud','tirmidhi'];
+  const ids = ['arbaeen','muwatta','abudawud','tirmidhi','nasai','ibnmajah'];
   const items = ids.map(id=>CATEGORIES.find(c=>c.id===id)).filter(Boolean);
   main.innerHTML = `
     <div class="cat-header">
@@ -4154,7 +4160,7 @@ function renderHadithHub(){
     <div class="friday-hero">
       <span class="fi">📚</span>
       <h2>كتب الحديث</h2>
-      <p>الأربعون النووية — موطأ مالك — سنن أبي داود — جامع الترمذي<br><b style="color:var(--gold-300)">النص والإسناد وتعليق الإمام والحكم كلٌّ منفصل</b></p>
+      <p>الأربعون النووية — موطأ مالك — سنن أبي داود — جامع الترمذي — سنن النسائي — سنن ابن ماجه<br><b style="color:var(--gold-300)">النص والإسناد وتعليق الإمام والحكم كلٌّ منفصل</b></p>
     </div>
     <div class="hub-grid" id="hhGrid"></div>`;
   $('#hhBack').onclick = ()=>{ currentView='home'; render(); };
@@ -4170,6 +4176,8 @@ function renderHadithHub(){
 const renderMuwatta = ()=>renderLib('muwatta');
 const renderAbudawud = ()=>renderLib('abudawud');
 const renderTirmidhi = ()=>renderLib('tirmidhi');
+const renderNasai = ()=>renderLib('nasai');
+const renderIbnMajah = ()=>renderLib('ibnmajah');
 
 function libGradeChip(label, g, strong){
   if(!g) return '';
