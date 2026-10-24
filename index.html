@@ -902,6 +902,10 @@ header.top{
   mix-blend-mode:overlay; pointer-events:none;
 }
 .tool-card .ic{width:44px;height:44px;border-radius:14px;font-size:22px;background-color:transparent;}
+/* أيقونة بصورة (مثل كاتيجوري كتب د/ هيثم طلعت): الصورة تملأ المربع الزجاجي كله */
+.cat-card .ic.ic-img{padding:0;}
+.cat-card .ic.ic-img img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center 22%;border-radius:inherit;z-index:0;}
+.cat-card .ic.ic-img::before,.cat-card .ic.ic-img::after{display:none;}
 .cat-card h3{font-size:14px;font-weight:800;}
 .cat-card.special{background:var(--glass-bg) !important;}
 .cat-card.special h3{color:var(--sage-800);}
@@ -1481,7 +1485,7 @@ const CATEGORIES = [
   {id:'nasai', name:'سنن النسائي', icon:'📗', desc:'٥١ كتابًا — مع حكم الألباني وأبي غدة', special:true, fullPage:true, view:'nasai', inHadithHub:true},
   {id:'ibnmajah', name:'سنن ابن ماجه', icon:'📕', desc:'٣٨ كتابًا — مع حكم الألباني والأرناؤوط', special:true, fullPage:true, view:'ibnmajah', inHadithHub:true},
   {id:'fiqh', name:'الفقه الحنبلي', icon:'⚖️', desc:'منهج السالكين وتوضيح الفقه في الدين — للشيخ السعدي', special:true, fullPage:true, view:'fiqh'},
-  {id:'haithamhub', name:'كتب د/ هيثم طلعت', icon:'📖', desc:'بصائر — الرد على الإلحاد والشبهات', special:true, fullPage:true, view:'haithamhub'},
+  {id:'haithamhub', name:'كتب د/ هيثم طلعت', icon:'📖', img:'icons/haitham.jpg', desc:'بصائر — الرد على الإلحاد والشبهات', special:true, fullPage:true, view:'haithamhub'},
   {id:'basaar', name:'بصائر', icon:'📖', desc:'الكون والحياة — نشأة الدين — الرسول ﷺ — الإعجاز العلمي — الرد على الشبهات', special:true, fullPage:true, view:'basaar', inHaithamHub:true},
   {id:'khatma', name:'ختمة', icon:'🔖', desc:'سجّل آخر موضع توقفت عنده في القرآن', special:true, fullPage:true, view:'khatma'},
   {id:'husoon', name:'الحصون الخمسة', icon:'🏰', desc:'خطة حفظ القرآن اليومية', special:true, fullPage:true, view:'husoon'},
@@ -1908,7 +1912,7 @@ NAWAFIL_GROUPS.forEach(g=>{ ZIKR[g.id] = g.items; });
 // ⚠️ ارفع هذا الرقم في كل مرة تعدّل فيها الملف، وارفع نفس الرقم أيضًا داخل
 // اسم CACHE_NAME في sw.js — بيظهر للمستخدم في أسفل الإعدادات ليعرف إنه
 // على آخر نسخة، ويشتغل مع شريط/زر "التحقق من التحديث".
-const APP_VERSION = '2.35.0';
+const APP_VERSION = '2.36.0';
 
 const LS_KEY='azkar_app_state_v1';
 let state = {
@@ -2676,7 +2680,8 @@ function renderHome(){
     el.className='cat-card';
     if(c.special){
       el.classList.add('special');
-      el.innerHTML = `<div class="ic">${c.icon}</div><h3>${c.name}</h3><p>${c.fullPage ? c.desc : (ZIKR[c.id]?ZIKR[c.id].length+' ذكر':c.desc)}</p>`;
+      const _icInner = c.img ? `<img src="${c.img}" alt="${c.name}" loading="lazy">` : c.icon;
+      el.innerHTML = `<div class="ic${c.img?' ic-img':''}">${_icInner}</div><h3>${c.name}</h3><p>${c.fullPage ? c.desc : (ZIKR[c.id]?ZIKR[c.id].length+' ذكر':c.desc)}</p>`;
       el.onclick = c.fullPage ? (()=>{ currentView=c.view; render(); }) : (()=>{ fridayTab='sunan'; kahfPage=0; currentView='friday'; render(); });
     } else {
       el.innerHTML = `<div class="ic">${c.icon}</div><h3>${c.name}</h3><p>${ZIKR[c.id]?ZIKR[c.id].length+' ذكر':c.desc}</p>`;
