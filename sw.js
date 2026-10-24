@@ -12,7 +12,7 @@ try{
   console.error('[sw.js] فشل تحميل OneSignal Worker:', e);
 }
 
-const CACHE_NAME = 'wazakkir-v2.36.0';
+const CACHE_NAME = 'wazakkir-v2.36.1';
 const STATIC_ASSETS = [
   'icons/icon-192.png',
   'icons/icon-512.png',
