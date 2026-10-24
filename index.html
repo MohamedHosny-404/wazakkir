@@ -4436,9 +4436,6 @@ async function ensureBasaarLoaded(){
   d._chTitle = {}; d._byCh = {};
   d.chapters.forEach(c=>{ d._chTitle[c[0]] = c[1]; d._byCh[c[0]] = []; });
   d.items.forEach((it,i)=>{ (d._byCh[it[0]] = d._byCh[it[0]] || []).push(i); });
-  // الصفحة المشتركة تتبع السؤال الذي يبدأ فيها
-  d._pageItem = {};
-  d.items.forEach((it,i)=>{ for(let p=it[3]; p<=it[4]; p++) d._pageItem[p] = i; });
   BAS_STATE.data = d;
   return d;
 }
@@ -4475,6 +4472,46 @@ function renderBasaar(){
 }
 
 function basItemTitle(it){ return (it[1] ? AR_DIG(it[1]) + ' - ' : '') + it[2]; }
+// موضع الحرف في النص الأصلي المقابل لموضع في النص المُوحَّد (حذف التشكيل فقط)
+function basRawIdx(raw, ni){
+  let n = 0;
+  for(let i=0;i<raw.length;i++){
+    if(/[\u064B-\u0652\u0670\u0640]/.test(raw[i])) continue;
+    if(n===ni) return i;
+    n++;
+  }
+  return 0;
+}
+const BAS_BOX = {
+  q:{label:'آية', color:'#2e8b57', bg:'rgba(46,139,87,.11)', bd:'solid'},
+  h:{label:'حديث', color:'#b8860b', bg:'rgba(184,134,11,.12)', bd:'solid'},
+  x:{label:'نص منقول', color:'#7a6f66', bg:'rgba(122,111,102,.10)', bd:'dashed'}
+};
+function basBlockHTML(b, pdfPage){
+  const t = b[0], txt = libEsc(b[1] == null ? '' : b[1]);
+  if(t==='pg') return `<div style="text-align:center;margin:14px 0 6px;"><a href="${BAS_PDF}#page=${b[1]}" target="_blank" rel="noopener" style="font-size:11px;color:var(--text-soft);text-decoration:none;border:1px solid var(--border,rgba(128,128,128,.3));border-radius:10px;padding:2px 10px;">ص ${AR_DIG(b[1])} · الأصل PDF</a></div>`;
+  if(t==='q'){
+    const s = BAS_BOX.q;
+    return `<div style="margin:12px 0;padding:12px 14px;border:2px ${s.bd} ${s.color};background:${s.bg};border-radius:14px;">
+      <div style="font-size:11px;font-weight:800;color:${s.color};margin-bottom:6px;">${s.label}</div>
+      <div style="font-family:'Amiri',serif;font-size:21px;line-height:2.3;text-align:center;color:${s.color};">﴿ ${txt} ﴾</div>
+      <div style="text-align:center;font-size:12.5px;font-weight:700;color:${s.color};margin-top:4px;">${libEsc(b[2]||'')}</div></div>`;
+  }
+  if(t==='h' || t==='x'){
+    const s = BAS_BOX[t];
+    return `<div style="margin:12px 0;padding:10px 14px;border:2px ${s.bd} ${s.color};background:${s.bg};border-radius:14px;">
+      <div style="font-size:11px;font-weight:800;color:${s.color};margin-bottom:4px;">${s.label}</div>
+      <div style="font-family:'Amiri',serif;font-size:18px;line-height:2.1;text-align:right;">${txt}</div></div>`;
+  }
+  if(t==='b') return `<div style="display:flex;gap:8px;align-items:flex-start;margin:6px 0;"><span style="color:var(--accent);font-size:13px;line-height:2.2;">◆</span><div style="font-family:'Amiri',serif;font-size:18px;line-height:2.2;text-align:right;flex:1;">${txt}</div></div>`;
+  // فقرة عادية — مع تمييز "ج:" و "س:"
+  const m = /^([جس]):\s*/.exec(b[1]||'');
+  if(m){
+    const col = m[1]==='ج' ? 'var(--accent)' : '#b4503c';
+    return `<div style="margin:10px 0;font-family:'Amiri',serif;font-size:18px;line-height:2.2;text-align:right;"><b style="color:${col};font-size:19px;">${m[1]==='ج'?'الجواب':'السؤال'}:</b> ${libEsc((b[1]||'').slice(m[0].length))}</div>`;
+  }
+  return `<div style="margin:8px 0;font-family:'Amiri',serif;font-size:18px;line-height:2.2;text-align:right;">${txt}</div>`;
+}
 
 function renderBasaarBody(){
   const st = BAS_STATE, body = $('#basBody');
@@ -4484,25 +4521,28 @@ function renderBasaarBody(){
   // ===== وضع البحث =====
   if(st.query.length >= 3){
     const q = libNorm(st.query);
-    if(!D._np){ D._np = {}; Object.keys(D.pages).forEach(p=>{ D._np[p] = libNorm(D.pages[p]); }); }
     const hits = [];
-    const keys = Object.keys(D.pages).map(Number).sort((a,b)=>a-b);
-    for(const p of keys){
-      const idx = D._np[p].indexOf(q);
-      if(idx >= 0){ hits.push({p, idx}); if(hits.length>=40) break; }
+    outer: for(let i=0;i<D.items.length;i++){
+      const it = D.items[i];
+      if(!D._nb) D._nb = {};
+      if(!D._nb[i]) D._nb[i] = it[5].map(b=> (b[0]==='pg'||b[1]==null) ? '' : libNorm(String(b[1])));
+      const nb = D._nb[i];
+      for(let k=0;k<nb.length;k++){
+        const idx = nb[k].indexOf(q);
+        if(idx>=0){ hits.push({i,k,idx}); if(hits.length>=40) break outer; break; }
+      }
     }
     if(!hits.length){ body.innerHTML = '<div class="note-box">لا توجد نتائج مطابقة (جرّب كلمات أقل أو بدون تشكيل).</div>'; return; }
     body.innerHTML = `<div class="note-box" style="margin-bottom:10px;">نتائج البحث: ${AR_DIG(hits.length)}${hits.length>=40?' (أول ٤٠ نتيجة — جرّب كلمات أدق)':''}</div>`;
     hits.forEach(h=>{
-      const txt = D.pages[h.p];
-      const s = Math.max(0, h.idx-50);
-      const snip = (s>0?'… ':'') + txt.slice(s, h.idx+110) + ' …';
-      const ii = D._pageItem[h.p];
-      const it = D.items[ii];
-      const d = document.createElement('div'); d.className='zikr-card';
-      d.style.cursor='pointer';
-      d.innerHTML = `<div style="font-size:11.5px;color:var(--text-soft);margin-bottom:4px;">${it?libEsc(basItemTitle(it)):''} — ص ${AR_DIG(h.p)}</div><div class="text" style="font-family:'Amiri',serif;font-size:17px;line-height:2;text-align:right;">${libEsc(snip)}</div>`;
-      d.onclick = ()=>{ if(ii==null) return; st.item = ii; st.chapter = it[0]; st.view='read'; st.query=''; const inp=$('#basSearchInput'); if(inp) inp.value=''; renderBasaarBody(); window.scrollTo(0,0); };
+      const it = D.items[h.i];
+      const raw = String(it[5][h.k][1]);
+      const ri = basRawIdx(raw, h.idx);
+      const s = Math.max(0, ri-50);
+      const snip = (s>0?'… ':'') + raw.slice(s, ri+110) + ' …';
+      const d = document.createElement('div'); d.className='zikr-card'; d.style.cursor='pointer';
+      d.innerHTML = `<div style="font-size:11.5px;color:var(--text-soft);margin-bottom:4px;">${libEsc(basItemTitle(it))}</div><div class="text" style="font-family:'Amiri',serif;font-size:17px;line-height:2;text-align:right;">${libEsc(snip)}</div>`;
+      d.onclick = ()=>{ st.item = h.i; st.chapter = it[0]; st.view='read'; st.query=''; const inp=$('#basSearchInput'); if(inp) inp.value=''; renderBasaarBody(); window.scrollTo(0,0); };
       body.appendChild(d);
     });
     return;
@@ -4550,16 +4590,10 @@ function renderBasaarBody(){
     </div>`;
   body.innerHTML = `
     <div class="section-title" style="margin-top:0;"><span class="dot"></span>${libEsc(basItemTitle(it))}</div>
-    <div class="note-box" style="margin-bottom:10px;">النص مُستخرج آليًا من الكتاب وقد يحتوي على أخطاء إملائية. للنص الأصلي بلا أخطاء:
+    <div class="note-box" style="margin-bottom:10px;">الآيات مأخوذة من نص المصحف مباشرة. باقي النص مُستخرج آليًا من الكتاب وقد يحتوي على أخطاء إملائية، وللنص الأصلي بدون أخطاء:
       <a class="chip" style="display:inline-block;margin-top:6px;" href="${BAS_PDF}#page=${it[3]}" target="_blank" rel="noopener">📄 فتح الصفحة الأصلية (PDF)</a></div>
-    ${nav}<div id="basPages"></div>${nav}`;
-  const wrap = $('#basPages');
-  for(let p=it[3]; p<=it[4]; p++){
-    const txt = D.pages[p]; if(!txt) continue;
-    const d = document.createElement('div'); d.className='zikr-card';
-    d.innerHTML = `<div style="font-size:11px;color:var(--text-soft);margin-bottom:4px;">ص ${AR_DIG(p)}</div><div class="text" style="font-family:'Amiri',serif;font-size:18px;line-height:2.2;text-align:right;white-space:pre-line;">${libEsc(txt)}</div>`;
-    wrap.appendChild(d);
-  }
+    ${nav}<div class="zikr-card" id="basDoc" style="padding:6px 14px 14px;"></div>${nav}`;
+  $('#basDoc').innerHTML = it[5].length ? it[5].map(b=>basBlockHTML(b)).join('') : '<div class="note-box">لا يوجد نص مستخرج لهذا السؤال — افتح الصفحة الأصلية من الزر أعلاه.</div>';
   body.querySelectorAll('[data-basnav]').forEach(b=>{
     b.onclick = ()=>{
       if(b.hasAttribute('disabled')) return;
