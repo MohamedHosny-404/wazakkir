@@ -1155,23 +1155,6 @@ nav.bottom button{ min-width:0; white-space:nowrap; }
   .mp-nav input{ width:52px; }
   .mp-head{ font-size:12.5px; }
 }
-/* ===== مجتمع وذكّر ===== */
-.cm-tabs{display:flex;gap:6px;overflow-x:auto;padding:2px 2px 10px;margin-bottom:6px;scrollbar-width:none;}
-.cm-tabs::-webkit-scrollbar{display:none;}
-.cm-tab{flex:0 0 auto;border:1px solid var(--border);background:var(--surface);color:var(--text-soft);border-radius:14px;padding:7px 12px;font-family:inherit;font-size:12px;font-weight:800;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;min-width:58px;}
-.cm-tab small{font-size:14px;}
-.cm-tab.active{background:var(--accent);color:#fff;border-color:var(--accent);}
-.cm-card{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:16px;margin-bottom:14px;box-shadow:var(--card-shadow);}
-.cm-theme{text-align:center;font-size:16px;font-weight:900;color:var(--accent);margin-bottom:6px;}
-.cm-label{font-size:12.5px;font-weight:800;color:var(--text-soft);margin:16px 0 8px;display:flex;align-items:center;gap:6px;}
-.cm-label::after{content:'';flex:1;height:1px;background:var(--border);}
-.cm-ayah,.cm-hadith{font-family:'Amiri',serif;font-size:19px;line-height:2.1;text-align:center;color:var(--text);}
-.cm-ref{text-align:center;font-size:11.5px;font-weight:800;color:var(--accent);margin:4px 0 8px;}
-.cm-tafsir{font-size:12.5px;color:var(--text-soft);line-height:1.9;background:var(--surface-2);border-radius:12px;padding:10px 12px;margin-top:6px;}
-.cm-tafsir b{color:var(--text);}
-.cm-deed{margin-top:16px;font-size:13px;line-height:1.9;border:1px dashed var(--gold-500);border-radius:12px;padding:10px 12px;color:var(--text);}
-.cm-actions{display:flex;gap:8px;margin-bottom:12px;}
-.cm-actions .act-btn:disabled{opacity:.6;}
 </style>
 
 <!-- OneSignal — إشعارات Push حقيقية تصل حتى لو التطبيق مقفول تمامًا -->
@@ -1500,7 +1483,7 @@ const CATEGORIES = [
   {id:'fiqh', name:'الفقه الحنبلي', icon:'⚖️', desc:'منهج السالكين وتوضيح الفقه في الدين — للشيخ السعدي', special:true, fullPage:true, view:'fiqh'},
   {id:'khatma', name:'ختمة', icon:'🔖', desc:'سجّل آخر موضع توقفت عنده في القرآن', special:true, fullPage:true, view:'khatma'},
   {id:'husoon', name:'الحصون الخمسة', icon:'🏰', desc:'خطة حفظ القرآن اليومية', special:true, fullPage:true, view:'husoon'},
-  {id:'community', name:'مجتمع وذكّر', icon:'🌿', desc:'بطاقة يومية: آية وتفسير وحديث وذكر — قابلة للمشاركة', special:true, fullPage:true, view:'community'},
+  {id:'daawa', name:'مجتمع وذكّر الدعوي', icon:'🌙', desc:'آية وحديث ودعاء جديد كل يوم — رسالة دعوية قابلة للمشاركة', special:true, fullPage:true, view:'daawa'},
 ];
 
 const ZIKR = {
@@ -1923,7 +1906,7 @@ NAWAFIL_GROUPS.forEach(g=>{ ZIKR[g.id] = g.items; });
 // ⚠️ ارفع هذا الرقم في كل مرة تعدّل فيها الملف، وارفع نفس الرقم أيضًا داخل
 // اسم CACHE_NAME في sw.js — بيظهر للمستخدم في أسفل الإعدادات ليعرف إنه
 // على آخر نسخة، ويشتغل مع شريط/زر "التحقق من التحديث".
-const APP_VERSION = '2.34.1';
+const APP_VERSION = '2.34.0';
 
 const LS_KEY='azkar_app_state_v1';
 let state = {
@@ -2124,7 +2107,7 @@ function updateAuthHeaderUI(){
 }
 
 const NAV_VIEWS = ['home','tasbih','qibla','settings'];
-const NAV_PARENT = {community:'home',azkarhub:'home',sahihhub:'home',nawafilhub:'home',category:'home',friday:'home',quran:'home',hadithhub:'home',arbaeen:'home',muwatta:'home',abudawud:'home',tirmidhi:'home',nasai:'home',ibnmajah:'home',fiqh:'home',daeefa:'home',husoon:'home',khatma:'home',account:'settings',adminLogin:'settings',admin:'settings'};
+const NAV_PARENT = {azkarhub:'home',sahihhub:'home',nawafilhub:'home',category:'home',friday:'home',quran:'home',hadithhub:'home',arbaeen:'home',muwatta:'home',abudawud:'home',tirmidhi:'home',nasai:'home',ibnmajah:'home',fiqh:'home',daeefa:'home',husoon:'home',daawa:'home',khatma:'home',account:'settings',adminLogin:'settings',admin:'settings'};
 function movePill(){
   const pill = document.getElementById('navPill');
   const active = document.querySelector('nav.bottom button.active');
@@ -2194,8 +2177,8 @@ function render(){
   else if(currentView==='fiqh') renderFiqh();
   else if(currentView==='daeefa') renderDaeefa();
   else if(currentView==='husoon') renderHusoon();
+  else if(currentView==='daawa') renderDaawa();
   else if(currentView==='khatma') renderKhatma();
-  else if(currentView==='community') renderCommunity();
   else if(currentView==='tasbih') renderTasbih();
   else if(currentView==='qibla') renderQibla();
   else if(currentView==='settings') renderSettings();
@@ -2684,7 +2667,7 @@ function renderHome(){
   const streakBadgeEl = $('#streakBadge');
   if(streakBadgeEl) streakBadgeEl.onclick = ()=>{ currentView='tasbih'; render(); };
   const grid = $('#catGrid');
-  CATEGORIES.filter(c=>!c.group && !c.inHadithHub && c.view!=='community').forEach((c,ci)=>{
+  CATEGORIES.filter(c=>!c.group && !c.inHadithHub).forEach((c,ci)=>{
     const el = document.createElement('div');
     el.className='cat-card';
     if(c.special){
@@ -2704,15 +2687,6 @@ function renderHome(){
   tasbihTile.onclick = ()=>{ currentView='tasbih'; render(); };
   tasbihTile.querySelector('.ic').style.setProperty('--tint', TINTS[5]);
   grid.appendChild(tasbihTile);
-  const communityCat = CATEGORIES.find(c=>c.view==='community');
-  if(communityCat){
-    const cmTile = document.createElement('div');
-    cmTile.className='cat-card special';
-    cmTile.innerHTML = `<div class="ic">${communityCat.icon}</div><h3>${communityCat.name}</h3><p>${communityCat.desc}</p>`;
-    cmTile.onclick = ()=>{ communityIdx=null; currentView='community'; render(); };
-    cmTile.querySelector('.ic').style.setProperty('--tint', TINTS[3 % TINTS.length]);
-    grid.appendChild(cmTile);
-  }
   document.querySelectorAll('.tool-card .ic').forEach((ic,i)=> ic.style.setProperty('--tint', TINTS[(i+2)%TINTS.length]));
   $('#goTasbih').onclick = ()=>{ currentView='tasbih'; render(); };
   $('#goQibla').onclick = ()=>{ currentView='qibla'; render(); };
@@ -4571,6 +4545,212 @@ function husoonDescribe(segments){
   }).join('<br>');
 }
 
+/* ================= مجتمع وذكّر الدعوي ================= */
+/* محتوى يومي (آية + حديث + دعاء) من ملف daawa.json — بدون سيرفر.
+   نص الآية بيتسحب من quran.json بالمرجع (سورة:آية) ويتأكد إنه مطابق لبداية الآية المقصودة قبل العرض. */
+let DAAWA_DATA = null;
+let DAAWA_CUR = null;
+let daawaOffset = 0; // 0 = اليوم، والسالب = أيام سابقة
+async function ensureDaawaLoaded(){
+  if(DAAWA_DATA) return DAAWA_DATA;
+  const res = await fetch('daawa.json');
+  if(!res.ok) throw new Error('daawa.json');
+  DAAWA_DATA = await res.json();
+  return DAAWA_DATA;
+}
+function daawaSkel(s){ return normAr(s).replace(/[اويىء\s]/g,''); }
+function daawaDateFor(off){ const d = new Date(); d.setHours(12,0,0,0); d.setDate(d.getDate()+off); return d; }
+function daawaAyahFor(e){
+  const sr = QURAN_DATA && QURAN_DATA.find(x=>x.id===e.s);
+  const text = sr && sr.v[e.v-1];
+  if(!text) return null;
+  if(daawaSkel(text).slice(0,5) !== daawaSkel(e.q).slice(0,5)){ console.warn('[daawa] ayah mismatch', e.s+':'+e.v); return null; }
+  return { text, surah: sr.name };
+}
+function daawaResolve(date){
+  const n = DAAWA_DATA.length;
+  const day = Math.floor(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate())/86400000);
+  const start = ((day % n)+n)%n;
+  if(!QURAN_DATA) return { e: DAAWA_DATA[start], ayah: null };
+  for(let k=0;k<n;k++){
+    const e = DAAWA_DATA[(start+k)%n];
+    const ayah = daawaAyahFor(e);
+    if(ayah) return { e, ayah };
+  }
+  return { e: DAAWA_DATA[start], ayah: null };
+}
+function daawaDateStr(date){
+  try{ return date.toLocaleDateString('ar-EG',{weekday:'long',day:'numeric',month:'long',year:'numeric'}); }
+  catch(_){ return date.toDateString(); }
+}
+function daawaBuildText(r, date){
+  const e = r.e;
+  const parts = ['🌙 مجتمع وذكّر الدعوي — ' + daawaDateStr(date), ''];
+  if(r.ayah){
+    parts.push('📖 آية اليوم', '﴿' + r.ayah.text + '﴾', '[سورة ' + r.ayah.surah + ' — الآية ' + e.v + ']', 'تأمل: ' + e.t, '');
+  }
+  parts.push('🕌 حديث اليوم', '«' + e.h + '»', '(' + e.hs + ')', 'الفائدة: ' + e.hx, '');
+  parts.push('🤲 دعاء اليوم', e.d, '(' + e.ds + ')', '', '— من تطبيق وَذَكِّر');
+  return parts.join('\n');
+}
+async function daawaMakeImage(r, date){
+  try{ await Promise.all([document.fonts.load('700 40px Amiri'), document.fonts.load('800 30px Tajawal')]); }catch(_){}
+  const W = 1080, P = 80, maxW = W - 2*P;
+  const tmp = document.createElement('canvas').getContext('2d');
+  tmp.direction = 'rtl';
+  const e = r.e;
+  const blocks = [];
+  const add = (text, font, color, lh, gap)=>{ blocks.push({text, font, color, lh, gap}); };
+  add('🌙 مجتمع وذكّر الدعوي', '800 50px Tajawal', '#e8c872', 70, 6);
+  add(daawaDateStr(date), '500 28px Tajawal', '#bfe3d3', 44, 30);
+  if(r.ayah){
+    add('آية اليوم', '800 32px Tajawal', '#e8c872', 54, 8);
+    add('﴿' + r.ayah.text + '﴾', '700 46px Amiri', '#ffffff', 88, 6);
+    add('سورة ' + r.ayah.surah + ' — الآية ' + e.v, '600 26px Tajawal', '#bfe3d3', 44, 10);
+    add(e.t, '500 29px Tajawal', '#e9f5ef', 52, 34);
+  }
+  add('حديث اليوم', '800 32px Tajawal', '#e8c872', 54, 8);
+  add('«' + e.h + '»', '700 40px Amiri', '#ffffff', 78, 6);
+  add(e.hs, '600 26px Tajawal', '#bfe3d3', 44, 10);
+  add(e.hx, '500 29px Tajawal', '#e9f5ef', 52, 34);
+  add('دعاء اليوم', '800 32px Tajawal', '#e8c872', 54, 8);
+  add(e.d, '700 40px Amiri', '#ffffff', 78, 6);
+  add(e.ds, '600 26px Tajawal', '#bfe3d3', 44, 40);
+  add('وَذَكِّر — تذكير يومي', '700 28px Tajawal', '#e8c872', 46, 0);
+  let H = P + 20;
+  blocks.forEach(b=>{
+    tmp.font = b.font;
+    const words = b.text.split(/\s+/); const lines = []; let cur = '';
+    words.forEach(w=>{
+      const t = cur ? cur + ' ' + w : w;
+      if(tmp.measureText(t).width > maxW && cur){ lines.push(cur); cur = w; } else cur = t;
+    });
+    if(cur) lines.push(cur);
+    b.lines = lines; H += lines.length * b.lh + b.gap;
+  });
+  H += P;
+  const c = document.createElement('canvas'); c.width = W; c.height = H;
+  const ctx = c.getContext('2d');
+  const g = ctx.createLinearGradient(0,0,0,H); g.addColorStop(0,'#0b3b2e'); g.addColorStop(1,'#14594a');
+  ctx.fillStyle = g; ctx.fillRect(0,0,W,H);
+  ctx.strokeStyle = 'rgba(232,200,114,.55)'; ctx.lineWidth = 3;
+  ctx.strokeRect(28,28,W-56,H-56);
+  ctx.direction = 'rtl'; ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
+  let y = P + 20;
+  blocks.forEach(b=>{
+    ctx.font = b.font; ctx.fillStyle = b.color;
+    b.lines.forEach(line=>{ y += b.lh; ctx.fillText(line, W/2, y - b.lh*0.28); });
+    y += b.gap;
+  });
+  return await new Promise(res=> c.toBlob(res, 'image/png'));
+}
+async function daawaShareImage(){
+  if(!DAAWA_CUR) return;
+  toast('جاري تجهيز الصورة…');
+  try{
+    const blob = await daawaMakeImage(DAAWA_CUR.r, DAAWA_CUR.date);
+    const file = new File([blob], 'wazakkir-daawa.png', {type:'image/png'});
+    if(navigator.canShare && navigator.canShare({files:[file]})){
+      try{ await navigator.share({files:[file], title:'مجتمع وذكّر الدعوي'}); return; }
+      catch(err){ if(err && err.name === 'AbortError') return; }
+    }
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'wazakkir-daawa.png';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(()=>URL.revokeObjectURL(a.href), 4000);
+    toast('تم حفظ الصورة ✅');
+  }catch(err){ toast('تعذّر تجهيز الصورة'); }
+}
+async function daawaShareText(){
+  if(!DAAWA_CUR) return;
+  const text = daawaBuildText(DAAWA_CUR.r, DAAWA_CUR.date);
+  if(navigator.share){
+    try{ await navigator.share({text}); return; }
+    catch(err){ if(err && err.name === 'AbortError') return; }
+  }
+  daawaCopyText();
+}
+async function daawaCopyText(){
+  if(!DAAWA_CUR) return;
+  const text = daawaBuildText(DAAWA_CUR.r, DAAWA_CUR.date);
+  try{ await navigator.clipboard.writeText(text); toast('تم نسخ النص ✅'); }
+  catch(_){
+    const ta = document.createElement('textarea'); ta.value = text; document.body.appendChild(ta); ta.select();
+    try{ document.execCommand('copy'); toast('تم نسخ النص ✅'); }catch(__){ toast('تعذّر النسخ'); }
+    ta.remove();
+  }
+}
+function renderDaawa(){
+  main.innerHTML = `
+    <div class="cat-header">
+      <div class="back-btn" id="daawaBack">→</div>
+      <h2>🌙 مجتمع وذكّر الدعوي</h2>
+    </div>
+    <div class="friday-hero">
+      <span class="fi">🌙</span>
+      <h2>رسالة اليوم</h2>
+      <p>آية وحديث ودعاء جديد كل يوم<br><b style="color:var(--gold-300)">«بلّغوا عني ولو آية»</b></p>
+    </div>
+    <div id="daawaBody"><div class="note-box">⏳ جاري التحميل...</div></div>
+  `;
+  $('#daawaBack').onclick = ()=>{ daawaOffset = 0; currentView = 'home'; render(); };
+  (async ()=>{
+    try{ await ensureDaawaLoaded(); }
+    catch(_){
+      const b = $('#daawaBody');
+      if(b) b.innerHTML = '<div class="note-box">⚠️ تعذّر تحميل المحتوى (daawa.json). تأكد من رفعه بجانب index.html على نفس الاستضافة.</div>';
+      return;
+    }
+    try{ await ensureQuranLoaded(); }catch(_){}
+    renderDaawaBody();
+  })();
+}
+function renderDaawaBody(){
+  const body = $('#daawaBody'); if(!body) return;
+  const date = daawaDateFor(daawaOffset);
+  const r = daawaResolve(date);
+  DAAWA_CUR = { r, date };
+  const e = r.e;
+  const ayahCard = r.ayah ? `
+    <div class="hadith-card">
+      <div class="hd-source" style="font-size:13px;margin-bottom:8px;">📖 آية اليوم</div>
+      <div class="hd-text" style="font-size:21px;">﴿${libEsc(r.ayah.text)}﴾</div>
+      <div class="hd-source">سورة ${libEsc(r.ayah.surah)} — الآية ${e.v}</div>
+      <div class="hd-explain"><b>تأمل دعوي:</b> ${libEsc(e.t)}</div>
+    </div>` : `
+    <div class="note-box" style="margin-bottom:14px;">📖 تعذّر عرض نص الآية الآن (quran.json). باقي رسالة اليوم متاحة بالأسفل.</div>`;
+  const dayLabel = daawaOffset === 0 ? 'اليوم' : (daawaOffset === -1 ? 'أمس' : `قبل ${-daawaOffset} يوم`);
+  body.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:14px;">
+      <button class="chip" id="daawaPrev" ${daawaOffset <= -30 ? 'disabled style="opacity:.4"' : ''}>‹ السابق</button>
+      <div style="text-align:center;font-size:12px;color:var(--text-soft);line-height:1.8;"><b style="color:var(--accent);font-size:13px;">${dayLabel}</b><br>${libEsc(daawaDateStr(date))}</div>
+      <button class="chip" id="daawaNext" ${daawaOffset >= 0 ? 'disabled style="opacity:.4"' : ''}>التالي ›</button>
+    </div>
+    ${ayahCard}
+    <div class="hadith-card">
+      <div class="hd-source" style="font-size:13px;margin-bottom:8px;">🕌 حديث اليوم</div>
+      <div class="hd-text">«${libEsc(e.h)}»</div>
+      <div class="hd-source">${libEsc(e.hs)}</div>
+      <div class="hd-explain"><b>الفائدة:</b> ${libEsc(e.hx)}</div>
+    </div>
+    <div class="hadith-card">
+      <div class="hd-source" style="font-size:13px;margin-bottom:8px;">🤲 دعاء اليوم</div>
+      <div class="hd-text">${libEsc(e.d)}</div>
+      <div class="hd-source">${libEsc(e.ds)}</div>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:10px;">
+      <button class="share-btn-main" id="daawaImg">🖼️ مشاركة كصورة</button>
+      <button class="share-btn-secondary" id="daawaTxt">📤 مشاركة نص</button>
+      <button class="share-btn-secondary" id="daawaCopy">📋 نسخ</button>
+    </div>
+    <div class="note-box">💡 التفسير والشرح المعروضان مختصران للتذكير والدعوة، وللاستزادة راجع كتب التفسير وشروح الحديث. شاركها صدقة جارية 🤍</div>
+  `;
+  $('#daawaPrev').onclick = ()=>{ if(daawaOffset > -30){ daawaOffset--; renderDaawaBody(); } };
+  $('#daawaNext').onclick = ()=>{ if(daawaOffset < 0){ daawaOffset++; renderDaawaBody(); } };
+  $('#daawaImg').onclick = daawaShareImage;
+  $('#daawaTxt').onclick = daawaShareText;
+  $('#daawaCopy').onclick = daawaCopyText;
+}
+
 function renderHusoon(){
   main.innerHTML = `
     <div class="cat-header">
@@ -4791,223 +4971,6 @@ function renderHusoonPlan(perDay){
 }
 
 // ===== ختمة: تسجيل آخر موضع توقفت عنده في القرآن =====
-/* ================= مجتمع وذكّر — نسخة ٧ أيام (بطاقة يومية: آية + تفسير + حديث + ذكر) =================
-   المصادر: نص الآية من quran.json (مصحف تنزيل) — التفسير من tafsir.json (التفسير الميسر)
-   الحديث والذكر مكتوبان هنا بتخريجهما. بدون سيرفر: اليوم يُحسب من تاريخ الجهاز ويدور كل ٧ أيام. */
-const COMMUNITY_DAYS = [
-  { title:'الإخلاص والنية', icon:'🌿', ref:{s:98,a:5},
-    hadith:{ text:'«إِنَّمَا الْأَعْمَالُ بِالنِّيَّاتِ، وَإِنَّمَا لِكُلِّ امْرِئٍ مَا نَوَى».', src:'متفق عليه', grade:'صحيح',
-      explain:'النية روح العمل؛ تتحوّل العادة إلى عبادة بنيّة صالحة، ويضيع أجر العمل إذا فسدت النية.' },
-    dhikr:{ text:'اللَّهُمَّ إِنِّي أَعُوذُ بِكَ أَنْ أُشْرِكَ بِكَ وَأَنَا أَعْلَمُ، وَأَسْتَغْفِرُكَ لِمَا لَا أَعْلَمُ.', src:'رواه أحمد، وصححه الألباني', grade:'صحيح' },
-    deed:'جدّد نيتك في شيء عادي اليوم (شغلك أو مذاكرتك أو أكلك) ليكون لله.' },
-  { title:'الطمأنينة والصبر', icon:'🤍', ref:{s:13,a:28},
-    hadith:{ text:'«عَجَبًا لِأَمْرِ الْمُؤْمِنِ، إِنَّ أَمْرَهُ كُلَّهُ خَيْرٌ، وَلَيْسَ ذَاكَ لِأَحَدٍ إِلَّا لِلْمُؤْمِنِ: إِنْ أَصَابَتْهُ سَرَّاءُ شَكَرَ فَكَانَ خَيْرًا لَهُ، وَإِنْ أَصَابَتْهُ ضَرَّاءُ صَبَرَ فَكَانَ خَيْرًا لَهُ».', src:'رواه مسلم', grade:'صحيح',
-      explain:'المؤمن رابح في كل أحواله: شكر في النعمة وصبر في البلاء، وكلاهما خير له.' },
-    dhikr:{ text:'يَا حَيُّ يَا قَيُّومُ، بِرَحْمَتِكَ أَسْتَغِيثُ، أَصْلِحْ لِي شَأْنِي كُلَّهُ، وَلَا تَكِلْنِي إِلَى نَفْسِي طَرْفَةَ عَيْنٍ.', src:'رواه الحاكم والنسائي في الكبرى، وحسّنه الألباني', grade:'حسن' },
-    deed:'ذكّر شخصًا متضايقًا بآية أو بكلمة طيبة تطمئنه.' },
-  { title:'حسن الخلق والرحمة', icon:'🌸', ref:{s:3,a:159},
-    hadith:{ text:'«لَا تَحْقِرَنَّ مِنَ الْمَعْرُوفِ شَيْئًا، وَلَوْ أَنْ تَلْقَى أَخَاكَ بِوَجْهٍ طَلْقٍ».', src:'رواه مسلم', grade:'صحيح',
-      explain:'لا تستصغر أي معروف؛ فالابتسامة وطلاقة الوجه صدقة تُدخل السرور على الناس.' },
-    dhikr:{ text:'اللَّهُمَّ اهْدِنِي لِأَحْسَنِ الْأَخْلَاقِ لَا يَهْدِي لِأَحْسَنِهَا إِلَّا أَنْتَ، وَاصْرِفْ عَنِّي سَيِّئَهَا لَا يَصْرِفُ عَنِّي سَيِّئَهَا إِلَّا أَنْتَ.', src:'رواه مسلم', grade:'صحيح' },
-    deed:'ابتسم وسلّم على ثلاثة أشخاص اليوم، وعامل أقرب الناس لك بلين.' },
-  { title:'الشكر', icon:'🌼', ref:{s:14,a:7},
-    hadith:{ text:'«مَنْ لَا يَشْكُرُ النَّاسَ لَا يَشْكُرُ اللَّهَ».', src:'رواه أبو داود والترمذي، وصححه الألباني', grade:'صحيح',
-      explain:'شكر الناس على معروفهم جزء من شكر الله، ومن اعتاد جحود الفضل قلّ شكره لربه.' },
-    dhikr:{ text:'اللَّهُمَّ أَعِنِّي عَلَى ذِكْرِكَ وَشُكْرِكَ وَحُسْنِ عِبَادَتِكَ.', src:'رواه أبو داود والنسائي، وصححه الألباني', grade:'صحيح' },
-    deed:'ابعت رسالة شكر لشخص له فضل عليك، ولو كانت كلمتين.' },
-  { title:'التوبة والرجوع', icon:'🌅', ref:{s:39,a:53},
-    hadith:{ text:'«كُلُّ ابْنِ آدَمَ خَطَّاءٌ، وَخَيْرُ الْخَطَّائِينَ التَّوَّابُونَ».', src:'رواه الترمذي وابن ماجه، وحسّنه الألباني', grade:'حسن',
-      explain:'الخطأ من طبع البشر، والمحمود من يسارع بالتوبة ولا يستمر على الذنب.' },
-    dhikr:{ text:'رَبِّ اغْفِرْ لِي وَتُبْ عَلَيَّ، إِنَّكَ أَنْتَ التَّوَّابُ الرَّحِيمُ.', src:'رواه أبو داود والترمذي، وصححه الألباني', grade:'صحيح' },
-    deed:'استغفر الله مئة مرة، وسامح شخصًا أخطأ في حقك.' },
-  { title:'نفع الناس', icon:'🤝', ref:{s:5,a:2},
-    hadith:{ text:'«أَحَبُّ النَّاسِ إِلَى اللَّهِ أَنْفَعُهُمْ لِلنَّاسِ».', src:'رواه الطبراني، وحسّنه الألباني', grade:'حسن',
-      explain:'أحب العباد إلى الله أكثرهم نفعًا لخلقه، بالمال أو الجاه أو العلم أو الكلمة الطيبة.' },
-    dhikr:{ text:'اللَّهُمَّ أَصْلِحْ لِي دِينِيَ الَّذِي هُوَ عِصْمَةُ أَمْرِي، وَأَصْلِحْ لِي دُنْيَايَ الَّتِي فِيهَا مَعَاشِي، وَأَصْلِحْ لِي آخِرَتِي الَّتِي فِيهَا مَعَادِي، وَاجْعَلِ الْحَيَاةَ زِيَادَةً لِي فِي كُلِّ خَيْرٍ، وَاجْعَلِ الْمَوْتَ رَاحَةً لِي مِنْ كُلِّ شَرٍّ.', src:'رواه مسلم', grade:'صحيح' },
-    deed:'ساعد شخصًا في شيء صغير اليوم، أو تصدّق ولو بالقليل.' },
-  { title:'الدعاء والقرب من الله', icon:'🤲', ref:{s:2,a:186},
-    hadith:{ text:'«الدُّعَاءُ هُوَ الْعِبَادَةُ».', src:'رواه أبو داود والترمذي، وصححه الألباني', grade:'صحيح',
-      explain:'الدعاء إظهار للافتقار إلى الله، وهو من أعظم العبادات وأقربها إلى القلب.' },
-    dhikr:{ text:'رَبَّنَا آتِنَا فِي الدُّنْيَا حَسَنَةً وَفِي الْآخِرَةِ حَسَنَةً وَقِنَا عَذَابَ النَّارِ.', src:'متفق عليه', grade:'صحيح' },
-    deed:'ادعُ لثلاثة أشخاص بظهر الغيب؛ فدعوة المسلم لأخيه بظهر الغيب مستجابة (رواه مسلم).' },
-];
-let communityIdx = null;
-const _communityCache = {};
-
-function communityTodayIdx(){
-  const n = new Date();
-  return Math.floor(Date.UTC(n.getFullYear(), n.getMonth(), n.getDate()) / 86400000) % COMMUNITY_DAYS.length;
-}
-async function communityLoadAyah(d){
-  if(_communityCache[d.title]) return _communityCache[d.title];
-  const out = { surah:'', text:'', tafsir:'' };
-  try{
-    await ensureQuranLoaded();
-    const s = QURAN_DATA.find(x=>x.id===d.ref.s);
-    if(s){ out.surah = s.name; const v = s.v[d.ref.a-1]; out.text = (typeof v==='string') ? v : ((v && (v.t||v.text)) || ''); }
-  }catch(e){}
-  try{
-    await ensureTafsirLoaded();
-    const t = TAFSIR_DATA.find(x=>x.id===d.ref.s);
-    if(t) out.tafsir = t.t[d.ref.a-1] || '';
-  }catch(e){}
-  if(out.text) _communityCache[d.title] = out;
-  return out;
-}
-
-function renderCommunity(){
-  if(communityIdx === null) communityIdx = communityTodayIdx();
-  main.innerHTML = `
-    <div class="cat-header">
-      <div class="back-btn" id="cmBack">→</div>
-      <h2>🌿 مجتمع وذكّر</h2>
-    </div>
-    <div class="friday-hero">
-      <span class="fi">🌿</span>
-      <h2>مجتمع وذكّر</h2>
-      <p>بطاقة يومية: آية وتفسير، حديث، وذكر — شاركها لتصل لمن تحب<br>
-      <b style="color:var(--gold-300)">﴿وَذَكِّرْ فَإِنَّ الذِّكْرَىٰ تَنفَعُ الْمُؤْمِنِينَ﴾</b></p>
-    </div>
-    <div class="cm-tabs" id="cmTabs"></div>
-    <div id="cmBody"><div class="note-box">⏳ جاري تحميل بطاقة اليوم...</div></div>
-  `;
-  $('#cmBack').onclick = ()=>{ currentView='home'; render(); };
-  renderCommunityBody();
-}
-
-async function renderCommunityBody(){
-  const tabs = $('#cmTabs'), body = $('#cmBody');
-  if(!tabs || !body) return;
-  const today = communityTodayIdx();
-  tabs.innerHTML = COMMUNITY_DAYS.map((d,i)=>
-    `<button class="cm-tab${i===communityIdx?' active':''}" data-i="${i}">${i===today?'اليوم':'يوم '+(i+1)}<small>${d.icon}</small></button>`
-  ).join('');
-  tabs.querySelectorAll('.cm-tab').forEach(b=> b.onclick = ()=>{ communityIdx = Number(b.dataset.i); renderCommunityBody(); });
-
-  const d = COMMUNITY_DAYS[communityIdx];
-  const idxAtStart = communityIdx;
-  body.innerHTML = `<div class="note-box">⏳ جاري التحميل...</div>`;
-  const ay = await communityLoadAyah(d);
-  if(communityIdx !== idxAtStart || currentView !== 'community') return;
-
-  const ayahHtml = ay.text
-    ? `<div class="cm-ayah">﴿${ay.text}﴾</div><div class="cm-ref">سورة ${ay.surah} — آية ${d.ref.a}</div>`
-    : `<div class="note-box">⚠️ تعذّر تحميل الآية (quran.json). تأكد من رفعه بجانب index.html.</div>`;
-  const tafsirHtml = ay.tafsir ? `<div class="cm-tafsir"><b>📘 التفسير الميسر:</b> ${ay.tafsir}</div>` : '';
-
-  body.innerHTML = `
-    <div class="cm-card">
-      <div class="cm-theme">${d.icon} ${d.title}</div>
-      <div class="cm-label">📖 آية اليوم</div>
-      ${ayahHtml}${tafsirHtml}
-      <div class="cm-label">📜 حديث اليوم</div>
-      <div class="cm-hadith">${d.hadith.text}</div>
-      <div class="cm-ref">${d.hadith.src} — ${d.hadith.grade}</div>
-      <div class="cm-tafsir"><b>المعنى:</b> ${d.hadith.explain}</div>
-      <div class="cm-label">🤲 ذكر اليوم</div>
-      <div class="cm-hadith">${d.dhikr.text}</div>
-      <div class="cm-ref">${d.dhikr.src} — ${d.dhikr.grade}</div>
-      <div class="cm-deed"><b>✨ عمل اليوم:</b> ${d.deed}</div>
-    </div>
-    <div class="cm-actions">
-      <button class="act-btn" id="cmShareImg" style="flex:1;justify-content:center;">🖼️ مشاركة كصورة</button>
-      <button class="act-btn" id="cmShareTxt" style="flex:1;justify-content:center;background:var(--surface-2);color:var(--text);border-color:var(--border);">📝 مشاركة كنص</button>
-    </div>
-  `;
-  $('#cmShareTxt').onclick = ()=> communityShareText(d, ay);
-  $('#cmShareImg').onclick = ()=> communityShareImage(d, ay);
-}
-
-function communityShareText(d, ay){
-  const t = [
-    `🌿 مجتمع وذكّر — ${d.title}`, '',
-    ay.text ? `﴿${ay.text}﴾\n[سورة ${ay.surah}: ${d.ref.a}]` : '',
-    ay.tafsir ? `\n📘 التفسير الميسر: ${ay.tafsir}` : '',
-    `\n📜 ${d.hadith.text}\n(${d.hadith.src})`,
-    `\n🤲 ${d.dhikr.text}\n(${d.dhikr.src})`,
-    `\n✨ ${d.deed}`,
-    '\nمن تطبيق وَذَكِّر'
-  ].filter(x=>x!==undefined).join('\n');
-  if(navigator.share){ navigator.share({ title:'مجتمع وذكّر', text:t }).catch(()=>{}); }
-  else if(navigator.clipboard){ navigator.clipboard.writeText(t).then(()=>toast('تم نسخ البطاقة للمشاركة')).catch(()=>toast('تعذّر النسخ')); }
-  else toast('المشاركة غير مدعومة على هذا المتصفح');
-}
-
-function _cmWrap(ctx, text, maxW){
-  const words = String(text).split(/\s+/).filter(Boolean), lines = [];
-  let cur = '';
-  for(const w of words){
-    const test = cur ? cur+' '+w : w;
-    if(ctx.measureText(test).width > maxW && cur){ lines.push(cur); cur = w; } else cur = test;
-  }
-  if(cur) lines.push(cur);
-  return lines;
-}
-
-async function communityShareImage(d, ay){
-  const btn = $('#cmShareImg'); if(btn) btn.disabled = true;
-  try{
-    try{ await Promise.all([document.fonts.load('700 40px Amiri'), document.fonts.load('700 30px Tajawal')]); }catch(e){}
-    const W=1080, H=1350, c=document.createElement('canvas'); c.width=W; c.height=H;
-    const x=c.getContext('2d');
-    const g=x.createLinearGradient(0,0,W,H); g.addColorStop(0,'#2E4B33'); g.addColorStop(1,'#1E2B22');
-    x.fillStyle=g; x.fillRect(0,0,W,H);
-    x.strokeStyle='#CBA75E'; x.lineWidth=4; x.strokeRect(36,36,W-72,H-72);
-    x.lineWidth=1.5; x.strokeRect(52,52,W-104,H-104);
-    x.direction='rtl'; x.textAlign='center'; x.textBaseline='top';
-    x.fillStyle='#DCC183'; x.font="700 58px Amiri, serif"; x.fillText('وَذَكِّر', W/2, 84);
-    x.fillStyle='#E8E4D4'; x.font="700 32px Tajawal, sans-serif"; x.fillText(d.icon+' '+d.title, W/2, 164);
-
-    const maxW = W-200;
-    const blocks = [
-      { label:'📖 آية اليوم', text: ay.text ? '﴿'+ay.text+'﴾' : '', sub: ay.text ? 'سورة '+ay.surah+' — آية '+d.ref.a : '', size:46 },
-      { label:'📜 حديث اليوم', text:d.hadith.text, sub:d.hadith.src, size:40 },
-      { label:'🤲 ذكر اليوم', text:d.dhikr.text, sub:d.dhikr.src, size:36 },
-    ].filter(b=>b.text);
-    const top=230, bottom=H-170, avail=bottom-top;
-    let scale=1, layout;
-    for(; scale>0.45; scale-=0.04){
-      let total=0; layout=[];
-      for(const b of blocks){
-        const fs=Math.round(b.size*scale);
-        x.font=`700 ${fs}px Amiri, serif`;
-        const lines=_cmWrap(x,b.text,maxW);
-        const lh=Math.round(fs*1.75);
-        const labelH=Math.round(30*scale)+14, subH=Math.round(26*scale)+10, gap=34;
-        layout.push({b,fs,lines,lh,labelH,subH});
-        total += labelH + lines.length*lh + subH + gap;
-      }
-      if(total<=avail) break;
-    }
-    let y=top;
-    for(const L of layout){
-      x.fillStyle='#CBA75E'; x.font=`700 ${Math.round(30*scale)}px Tajawal, sans-serif`;
-      x.fillText(L.b.label, W/2, y); y += L.labelH;
-      x.fillStyle='#F4EEE0'; x.font=`700 ${L.fs}px Amiri, serif`;
-      for(const ln of L.lines){ x.fillText(ln, W/2, y); y += L.lh; }
-      x.fillStyle='#A3B5A0'; x.font=`500 ${Math.round(26*scale)}px Tajawal, sans-serif`;
-      x.fillText(L.b.sub, W/2, y); y += L.subH + 34;
-    }
-    x.fillStyle='#DCC183'; x.font="700 28px Tajawal, sans-serif";
-    x.fillText('✨ '+d.deed, W/2, H-150, W-200);
-    x.fillStyle='#A3B5A0'; x.font="500 24px Tajawal, sans-serif";
-    x.fillText('تطبيق وَذَكِّر — '+new Date().toLocaleDateString('ar-EG',{day:'numeric',month:'long',year:'numeric'}), W/2, H-100);
-
-    const blob = await new Promise(res=>c.toBlob(res,'image/png'));
-    if(!blob) throw new Error('no blob');
-    const file = new File([blob], 'wazakkir-community.png', {type:'image/png'});
-    if(navigator.canShare && navigator.canShare({files:[file]})){
-      await navigator.share({ files:[file], title:'مجتمع وذكّر' }).catch(()=>{});
-    } else {
-      const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='wazakkir-community.png';
-      document.body.appendChild(a); a.click(); a.remove();
-      setTimeout(()=>URL.revokeObjectURL(a.href),4000);
-      toast('تم حفظ البطاقة كصورة');
-    }
-  }catch(e){ console.error(e); toast('تعذّر إنشاء الصورة'); }
-  finally{ if(btn) btn.disabled = false; }
-}
-
 function renderKhatma(){
   main.innerHTML = `
     <div class="cat-header">
