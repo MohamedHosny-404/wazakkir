@@ -12,7 +12,7 @@ try{
   console.error('[sw.js] فشل تحميل OneSignal Worker:', e);
 }
 
-const CACHE_NAME = 'wazakkir-v2.34.0';
+const CACHE_NAME = 'wazakkir-v2.35.0';
 const STATIC_ASSETS = [
   'icons/icon-192.png',
   'icons/icon-512.png',
@@ -61,6 +61,9 @@ self.addEventListener('fetch', event => {
   ) {
     return;
   }
+
+  // ملف الكتاب الأصلي (PDF) كبير: يُفتح من الشبكة مباشرة ولا يُكاش حتى لا يمتلئ تخزين الجهاز
+  if (url.split('#')[0].split('?')[0].endsWith('.pdf')) return;
 
   const isHTML = event.request.mode === 'navigate' || url.endsWith('.html') || url.endsWith('/');
   const isManifest = url.endsWith('manifest.json');

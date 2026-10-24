@@ -1481,6 +1481,8 @@ const CATEGORIES = [
   {id:'nasai', name:'سنن النسائي', icon:'📗', desc:'٥١ كتابًا — مع حكم الألباني وأبي غدة', special:true, fullPage:true, view:'nasai', inHadithHub:true},
   {id:'ibnmajah', name:'سنن ابن ماجه', icon:'📕', desc:'٣٨ كتابًا — مع حكم الألباني والأرناؤوط', special:true, fullPage:true, view:'ibnmajah', inHadithHub:true},
   {id:'fiqh', name:'الفقه الحنبلي', icon:'⚖️', desc:'منهج السالكين وتوضيح الفقه في الدين — للشيخ السعدي', special:true, fullPage:true, view:'fiqh'},
+  {id:'haithamhub', name:'كتب د/ هيثم طلعت', icon:'📖', desc:'بصائر — الرد على الإلحاد والشبهات', special:true, fullPage:true, view:'haithamhub'},
+  {id:'basaar', name:'بصائر', icon:'📖', desc:'الكون والحياة — نشأة الدين — الرسول ﷺ — الإعجاز العلمي — الرد على الشبهات', special:true, fullPage:true, view:'basaar', inHaithamHub:true},
   {id:'khatma', name:'ختمة', icon:'🔖', desc:'سجّل آخر موضع توقفت عنده في القرآن', special:true, fullPage:true, view:'khatma'},
   {id:'husoon', name:'الحصون الخمسة', icon:'🏰', desc:'خطة حفظ القرآن اليومية', special:true, fullPage:true, view:'husoon'},
   {id:'daawa', name:'مجتمع وذكّر الدعوي', icon:'🌙', desc:'آية وحديث ودعاء جديد كل يوم — رسالة دعوية قابلة للمشاركة', special:true, fullPage:true, view:'daawa'},
@@ -1906,7 +1908,7 @@ NAWAFIL_GROUPS.forEach(g=>{ ZIKR[g.id] = g.items; });
 // ⚠️ ارفع هذا الرقم في كل مرة تعدّل فيها الملف، وارفع نفس الرقم أيضًا داخل
 // اسم CACHE_NAME في sw.js — بيظهر للمستخدم في أسفل الإعدادات ليعرف إنه
 // على آخر نسخة، ويشتغل مع شريط/زر "التحقق من التحديث".
-const APP_VERSION = '2.34.0';
+const APP_VERSION = '2.35.0';
 
 const LS_KEY='azkar_app_state_v1';
 let state = {
@@ -2175,6 +2177,8 @@ function render(){
   else if(currentView==='nasai') renderNasai();
   else if(currentView==='ibnmajah') renderIbnMajah();
   else if(currentView==='fiqh') renderFiqh();
+  else if(currentView==='haithamhub') renderHaithamHub();
+  else if(currentView==='basaar') renderBasaar();
   else if(currentView==='daeefa') renderDaeefa();
   else if(currentView==='husoon') renderHusoon();
   else if(currentView==='daawa') renderDaawa();
@@ -2667,7 +2671,7 @@ function renderHome(){
   const streakBadgeEl = $('#streakBadge');
   if(streakBadgeEl) streakBadgeEl.onclick = ()=>{ currentView='tasbih'; render(); };
   const grid = $('#catGrid');
-  CATEGORIES.filter(c=>!c.group && !c.inHadithHub).forEach((c,ci)=>{
+  CATEGORIES.filter(c=>!c.group && !c.inHadithHub && !c.inHaithamHub).forEach((c,ci)=>{
     const el = document.createElement('div');
     el.className='cat-card';
     if(c.special){
@@ -4387,6 +4391,181 @@ function renderFiqhBody(){
       if(b.hasAttribute('disabled')) return;
       st.page += (b.dataset.fiqhnav==='next') ? 1 : -1;
       renderFiqhBody();
+      const hd = document.querySelector('.cat-header'); if(hd) hd.scrollIntoView({behavior:'smooth'});
+    };
+  });
+}
+
+/* ================= كتب د/ هيثم طلعت =================
+   بيانات الكتاب في ملف منفصل: basaar.json (بجانب index.html) بالشكل:
+   { chapters:[[id,عنوان]], items:[[chapterId, رقم السؤال, العنوان, صفحة البداية, صفحة النهاية]], pages:{"رقم الصفحة":"النص"} }
+   النص مُستخرج آليًا (OCR) — لذلك يوجد زر لفتح الصفحة الأصلية في ملف ar-basaar.pdf (يُرفع بجانب الملفات) */
+const HT_BOOK_IDS = ['basaar'];
+const BAS_PDF = 'ar-basaar.pdf';
+const BAS_STATE = {data:null, view:'chapters', chapter:null, item:null, query:''};
+
+function renderHaithamHub(){
+  const items = HT_BOOK_IDS.map(id=>CATEGORIES.find(c=>c.id===id)).filter(Boolean);
+  main.innerHTML = `
+    <div class="cat-header">
+      <div class="back-btn" id="htBack">→</div>
+      <h2>📖 كتب د/ هيثم طلعت</h2>
+    </div>
+    <div class="friday-hero">
+      <span class="fi">📖</span>
+      <h2>كتب د/ هيثم طلعت</h2>
+      <p>مؤلفات الدكتور هيثم طلعت<br><b style="color:var(--gold-300)">اختر الكتاب للقراءة والبحث داخله</b></p>
+    </div>
+    <div class="hub-grid" id="htGrid"></div>`;
+  $('#htBack').onclick = ()=>{ currentView='home'; render(); };
+  items.forEach((c,i)=>{
+    const el = document.createElement('div');
+    el.className = 'cat-card hub-card';
+    el.innerHTML = `<div class="ic">${c.icon}</div><h3>${c.name}</h3><p>${c.desc}</p>`;
+    el.querySelector('.ic').style.setProperty('--tint', TINTS[i % TINTS.length]);
+    el.onclick = ()=>{ currentView = c.view; render(); };
+    $('#htGrid').appendChild(el);
+  });
+}
+
+async function ensureBasaarLoaded(){
+  if(BAS_STATE.data) return BAS_STATE.data;
+  const res = await fetch('basaar.json');
+  if(!res.ok) throw new Error('basaar.json ' + res.status);
+  const d = await res.json();
+  d._chTitle = {}; d._byCh = {};
+  d.chapters.forEach(c=>{ d._chTitle[c[0]] = c[1]; d._byCh[c[0]] = []; });
+  d.items.forEach((it,i)=>{ (d._byCh[it[0]] = d._byCh[it[0]] || []).push(i); });
+  // الصفحة المشتركة تتبع السؤال الذي يبدأ فيها
+  d._pageItem = {};
+  d.items.forEach((it,i)=>{ for(let p=it[3]; p<=it[4]; p++) d._pageItem[p] = i; });
+  BAS_STATE.data = d;
+  return d;
+}
+
+function renderBasaar(){
+  const st = BAS_STATE;
+  main.innerHTML = `
+    <div class="cat-header">
+      <div class="back-btn" id="basBack">→</div>
+      <h2>📖 بصائر</h2>
+    </div>
+    <div class="friday-hero">
+      <span class="fi">📖</span>
+      <h2>بصائر</h2>
+      <p>للدكتور هيثم طلعت<br><b style="color:var(--gold-300)">الكون والحياة — نشأة الدين — الرسول ﷺ — الإعجاز العلمي — الرد على الشبهات</b></p>
+    </div>
+    <div class="search-wrap in-page" style="margin-bottom:14px;">
+      <input type="search" id="basSearchInput" placeholder="ابحث في نص الكتاب بجزء من الكلام…" autocomplete="off" value="${libEsc(st.query)}">
+      <span class="si">🔍</span>
+    </div>
+    <div id="basBody"><div class="note-box">⏳ جاري التحميل (أول مرة فقط)...</div></div>
+  `;
+  $('#basBack').onclick = ()=>{
+    if(st.query){ st.query=''; $('#basSearchInput').value=''; renderBasaarBody(); }
+    else if(st.view==='read'){ st.view='items'; renderBasaarBody(); window.scrollTo(0,0); }
+    else if(st.view==='items'){ st.view='chapters'; renderBasaarBody(); window.scrollTo(0,0); }
+    else { currentView='haithamhub'; render(); }
+  };
+  $('#basSearchInput').oninput = e=>{ st.query = e.target.value.trim(); renderBasaarBody(); };
+  ensureBasaarLoaded().then(()=> renderBasaarBody()).catch(()=>{
+    const b = $('#basBody');
+    if(b) b.innerHTML = '<div class="note-box">⚠️ تعذّر تحميل الكتاب (basaar.json). تأكد من رفعه بجانب index.html على نفس الاستضافة.</div>';
+  });
+}
+
+function basItemTitle(it){ return (it[1] ? AR_DIG(it[1]) + ' - ' : '') + it[2]; }
+
+function renderBasaarBody(){
+  const st = BAS_STATE, body = $('#basBody');
+  if(!body || !st.data) return;
+  const D = st.data;
+
+  // ===== وضع البحث =====
+  if(st.query.length >= 3){
+    const q = libNorm(st.query);
+    if(!D._np){ D._np = {}; Object.keys(D.pages).forEach(p=>{ D._np[p] = libNorm(D.pages[p]); }); }
+    const hits = [];
+    const keys = Object.keys(D.pages).map(Number).sort((a,b)=>a-b);
+    for(const p of keys){
+      const idx = D._np[p].indexOf(q);
+      if(idx >= 0){ hits.push({p, idx}); if(hits.length>=40) break; }
+    }
+    if(!hits.length){ body.innerHTML = '<div class="note-box">لا توجد نتائج مطابقة (جرّب كلمات أقل أو بدون تشكيل).</div>'; return; }
+    body.innerHTML = `<div class="note-box" style="margin-bottom:10px;">نتائج البحث: ${AR_DIG(hits.length)}${hits.length>=40?' (أول ٤٠ نتيجة — جرّب كلمات أدق)':''}</div>`;
+    hits.forEach(h=>{
+      const txt = D.pages[h.p];
+      const s = Math.max(0, h.idx-50);
+      const snip = (s>0?'… ':'') + txt.slice(s, h.idx+110) + ' …';
+      const ii = D._pageItem[h.p];
+      const it = D.items[ii];
+      const d = document.createElement('div'); d.className='zikr-card';
+      d.style.cursor='pointer';
+      d.innerHTML = `<div style="font-size:11.5px;color:var(--text-soft);margin-bottom:4px;">${it?libEsc(basItemTitle(it)):''} — ص ${AR_DIG(h.p)}</div><div class="text" style="font-family:'Amiri',serif;font-size:17px;line-height:2;text-align:right;">${libEsc(snip)}</div>`;
+      d.onclick = ()=>{ if(ii==null) return; st.item = ii; st.chapter = it[0]; st.view='read'; st.query=''; const inp=$('#basSearchInput'); if(inp) inp.value=''; renderBasaarBody(); window.scrollTo(0,0); };
+      body.appendChild(d);
+    });
+    return;
+  }
+
+  // ===== فهرس الأبواب =====
+  if(st.view === 'chapters'){
+    body.innerHTML = `<div class="section-title" style="margin-top:0;"><span class="dot"></span>${AR_DIG(D.chapters.length)} أقسام — ${AR_DIG(D.items.length)} سؤالًا</div><div id="basList"></div>`;
+    const list = $('#basList');
+    D.chapters.forEach((c,i)=>{
+      const n = (D._byCh[c[0]]||[]).length;
+      const el = document.createElement('div');
+      el.className = 'surah-index-item';
+      el.innerHTML = `<div class="surah-num">${AR_DIG(i+1)}</div><div class="surah-info"><div class="surah-name">${libEsc(c[1])}</div><div class="surah-sub">${AR_DIG(n)} سؤال</div></div><div class="surah-arrow">‹</div>`;
+      el.onclick = ()=>{ st.chapter=c[0]; st.view='items'; renderBasaarBody(); window.scrollTo(0,0); };
+      list.appendChild(el);
+    });
+    return;
+  }
+
+  // ===== أسئلة الباب =====
+  if(st.view === 'items'){
+    const ids = D._byCh[st.chapter] || [];
+    body.innerHTML = `<div class="section-title" style="margin-top:0;"><span class="dot"></span>${libEsc(D._chTitle[st.chapter]||'')}</div><div id="basList"></div>`;
+    const list = $('#basList');
+    ids.forEach(i=>{
+      const it = D.items[i];
+      const el = document.createElement('div');
+      el.className = 'surah-index-item';
+      el.innerHTML = `<div class="surah-num">${it[1]?AR_DIG(it[1]):'•'}</div><div class="surah-info"><div class="surah-name">${libEsc(it[2])}</div><div class="surah-sub">ص ${AR_DIG(it[3])}</div></div><div class="surah-arrow">‹</div>`;
+      el.onclick = ()=>{ st.item=i; st.view='read'; renderBasaarBody(); window.scrollTo(0,0); };
+      list.appendChild(el);
+    });
+    return;
+  }
+
+  // ===== قراءة سؤال =====
+  const it = D.items[st.item];
+  if(!it){ st.view='chapters'; renderBasaarBody(); return; }
+  const prev = st.item>0 ? st.item-1 : null, next = st.item<D.items.length-1 ? st.item+1 : null;
+  const nav = `
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin:10px 0;">
+      <button class="chip" data-basnav="next" ${next==null?'disabled style="opacity:.4"':''}>التالي ›</button>
+      <button class="chip" data-basnav="prev" ${prev==null?'disabled style="opacity:.4"':''}>‹ السابق</button>
+    </div>`;
+  body.innerHTML = `
+    <div class="section-title" style="margin-top:0;"><span class="dot"></span>${libEsc(basItemTitle(it))}</div>
+    <div class="note-box" style="margin-bottom:10px;">النص مُستخرج آليًا من الكتاب وقد يحتوي على أخطاء إملائية. للنص الأصلي بلا أخطاء:
+      <a class="chip" style="display:inline-block;margin-top:6px;" href="${BAS_PDF}#page=${it[3]}" target="_blank" rel="noopener">📄 فتح الصفحة الأصلية (PDF)</a></div>
+    ${nav}<div id="basPages"></div>${nav}`;
+  const wrap = $('#basPages');
+  for(let p=it[3]; p<=it[4]; p++){
+    const txt = D.pages[p]; if(!txt) continue;
+    const d = document.createElement('div'); d.className='zikr-card';
+    d.innerHTML = `<div style="font-size:11px;color:var(--text-soft);margin-bottom:4px;">ص ${AR_DIG(p)}</div><div class="text" style="font-family:'Amiri',serif;font-size:18px;line-height:2.2;text-align:right;white-space:pre-line;">${libEsc(txt)}</div>`;
+    wrap.appendChild(d);
+  }
+  body.querySelectorAll('[data-basnav]').forEach(b=>{
+    b.onclick = ()=>{
+      if(b.hasAttribute('disabled')) return;
+      st.item = b.dataset.basnav==='next' ? next : prev;
+      st.chapter = D.items[st.item][0];
+      renderBasaarBody();
       const hd = document.querySelector('.cat-header'); if(hd) hd.scrollIntoView({behavior:'smooth'});
     };
   });
