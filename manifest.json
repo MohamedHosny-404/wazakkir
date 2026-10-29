@@ -1,25 +1,28 @@
 {
-  "name": "وَذَكِّر",
+  "name": "وَذَكِّر — أذكار المسلم",
   "short_name": "وَذَكِّر",
-  "description": "وَذَكِّر — تطبيق الأذكار الإسلامية اليومية — فَاذْكُرُونِي أَذْكُرْكُمْ",
-  "start_url": "/wazakkir/index.html",
-  "scope": "/wazakkir/",
+  "description": "تطبيق الأذكار الإسلامية اليومية — فَاذْكُرُونِي أَذْكُرْكُمْ",
+  "id": "./",
+  "start_url": "./index.html",
+  "scope": "./",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#1F2A22",
-  "theme_color": "#4C7050",
   "lang": "ar",
   "dir": "rtl",
+  "background_color": "#F4EEE0",
+  "theme_color": "#4C7050",
   "icons": [
-    { "src": "icon-72.png",  "sizes": "72x72",   "type": "image/png" },
-    { "src": "icon-96.png",  "sizes": "96x96",   "type": "image/png" },
-    { "src": "icon-152.png", "sizes": "152x152", "type": "image/png" },
-    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
-    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
-  ],
-  "categories": ["lifestyle", "religion"],
-  "shortcuts": [
-    { "name": "أذكار الصباح", "url": "/wazakkir/index.html#sabah" },
-    { "name": "التسبيح",      "url": "/wazakkir/index.html#tasbih" }
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
   ]
 }
