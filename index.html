@@ -1160,16 +1160,6 @@ nav.bottom button{ min-width:0; white-space:nowrap; }
   .mp-nav input{ width:52px; }
   .mp-head{ font-size:12.5px; }
 }
-/* ===== زر تثبيت التطبيق ===== */
-.install-btn{
-  display:none;align-items:center;gap:6px;height:36px;padding:0 14px;border:none;border-radius:999px;
-  background:var(--accent);color:#fff;font-family:'Tajawal',sans-serif;font-weight:800;font-size:13px;
-  cursor:pointer;box-shadow:0 3px 10px color-mix(in srgb, var(--accent) 35%, transparent);
-  animation:installPulse 2.4s ease-in-out infinite;
-}
-.install-btn.show{display:inline-flex;}
-.install-btn:active{transform:scale(.94);}
-@keyframes installPulse{0%,100%{box-shadow:0 3px 10px color-mix(in srgb, var(--accent) 35%, transparent);}50%{box-shadow:0 3px 18px color-mix(in srgb, var(--accent) 65%, transparent);}}
 </style>
 
 <!-- OneSignal — إشعارات Push حقيقية تصل حتى لو التطبيق مقفول تمامًا -->
@@ -1439,55 +1429,6 @@ nav.bottom button{ min-width:0; white-space:nowrap; }
     }catch(e){ console.error('[WZAuth] فشل تحميل محتوى التطبيق:', e); }
   })();
 </script>
-<script>
-/* ===== تثبيت التطبيق بضغطة زر (تثبيت حقيقي) ===== */
-(function(){
-  var deferredPrompt=null;
-  var isStandalone=function(){return window.matchMedia('(display-mode: standalone)').matches||window.navigator.standalone===true;};
-
-  function headerBtn(){ return document.getElementById('installBtn'); }
-  function settingsBtn(){ return document.getElementById('settingsInstallBtn'); }
-
-  function refreshUI(){
-    var ready=!!deferredPrompt&&!isStandalone();
-    var h=headerBtn(); if(h) h.classList.toggle('show',ready);
-    var st=settingsBtn();
-    if(st){
-      st.disabled=!ready;
-      st.style.opacity=ready?'':'.5';
-      var note=document.getElementById('settingsInstallNote');
-      if(note) note.style.display=ready?'none':'block';
-    }
-  }
-
-  function doInstall(){
-    if(!deferredPrompt) return;
-    var p=deferredPrompt;
-    deferredPrompt=null; refreshUI();
-    p.prompt();   // نافذة التثبيت الأصلية من المتصفح
-    p.userChoice.catch(function(){});
-  }
-
-  // المتصفح بيطلق الحدث ده لما التطبيق يبقى قابل للتثبيت — بنحتفظ بيه لحد ما المستخدم يدوس
-  window.addEventListener('beforeinstallprompt',function(e){
-    e.preventDefault(); deferredPrompt=e; refreshUI();
-  });
-  window.addEventListener('appinstalled',function(){
-    deferredPrompt=null; refreshUI();
-    try{ if(typeof toast==='function') toast('تم تثبيت التطبيق ✅'); }catch(_){}
-  });
-
-  // زرار الإعدادات بيتعمل من جديد مع كل عرض للإعدادات، فنستخدم event delegation
-  document.addEventListener('click',function(e){
-    var t=e.target&&e.target.closest?e.target.closest('#installBtn,#settingsInstallBtn'):null;
-    if(t) doInstall();
-  });
-
-  // للاستخدام من renderSettings
-  window.WZInstall={ready:function(){return !!deferredPrompt&&!isStandalone();},refresh:refreshUI};
-  document.addEventListener('DOMContentLoaded',refreshUI);
-})();
-</script>
 </head>
 <body data-theme="light">
 <div id="app">
@@ -1501,7 +1442,6 @@ nav.bottom button{ min-width:0; white-space:nowrap; }
         </div>
       </div>
       <div style="display:flex;gap:8px;align-items:center;">
-        <button class="install-btn" id="installBtn" title="تثبيت التطبيق">⬇️ تثبيت</button>
         <button class="icon-btn" id="themeBtn" title="الوضع الليلي">🌙</button>
         <button class="icon-btn" id="settingsBtn" title="الإعدادات">⚙️</button>
       </div>
@@ -5641,17 +5581,7 @@ function renderStats(){
 
 /* ===== SETTINGS ===== */
 function renderSettings(){
-  const __installed = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone===true;
   main.innerHTML = `
-    <div class="section-title"><span class="dot"></span>تثبيت التطبيق</div>
-    <div class="settings-group">
-      <div class="settings-row">
-        <div class="l"><span class="ic">📲</span>${__installed ? 'التطبيق مثبت على جهازك' : 'ثبّت التطبيق على شاشة هاتفك'}</div>
-        ${__installed ? '<span style="font-size:11.5px;font-weight:800;color:var(--ok);">✅ مثبّت</span>' : `<button class="act-btn" id="settingsInstallBtn" ${window.WZInstall&&window.WZInstall.ready()?'':'disabled style="opacity:.5"'}>تثبيت</button>`}
-      </div>
-      ${__installed ? '' : `<div id="settingsInstallNote" style="padding:0 16px 14px;font-size:11px;color:var(--text-soft);line-height:1.8;${window.WZInstall&&window.WZInstall.ready()?'display:none;':''}">التثبيت غير متاح حاليًا على هذا المتصفح أو الجهاز.</div>`}
-    </div>
-
     <div class="section-title"><span class="dot"></span>المظهر</div>
     <div class="settings-group">
       <div class="settings-row"><div class="l"><span class="ic">🌙</span>الوضع الليلي</div><div class="switch ${state.theme==='dark'?'on':''}" id="darkSwitch"></div></div>
