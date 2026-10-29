@@ -1160,6 +1160,22 @@ nav.bottom button{ min-width:0; white-space:nowrap; }
   .mp-nav input{ width:52px; }
   .mp-head{ font-size:12.5px; }
 }
+/* ===== زر تثبيت التطبيق ===== */
+.install-btn{
+  display:none;align-items:center;gap:6px;height:36px;padding:0 14px;border:none;border-radius:999px;
+  background:var(--accent);color:#fff;font-family:'Tajawal',sans-serif;font-weight:800;font-size:13px;
+  cursor:pointer;box-shadow:0 3px 10px color-mix(in srgb, var(--accent) 35%, transparent);
+  animation:installPulse 2.4s ease-in-out infinite;
+}
+.install-btn.show{display:inline-flex;}
+.install-btn:active{transform:scale(.94);}
+@keyframes installPulse{0%,100%{box-shadow:0 3px 10px color-mix(in srgb, var(--accent) 35%, transparent);}50%{box-shadow:0 3px 18px color-mix(in srgb, var(--accent) 65%, transparent);}}
+.ios-install-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;display:none;align-items:flex-end;justify-content:center;}
+.ios-install-overlay.show{display:flex;}
+.ios-install-box{background:var(--surface-solid);color:var(--text);width:100%;max-width:480px;border-radius:22px 22px 0 0;padding:22px 20px 28px;font-family:'Tajawal',sans-serif;line-height:1.9;direction:rtl;}
+.ios-install-box h3{margin:0 0 10px;font-size:17px;font-weight:900;}
+.ios-install-box ol{margin:0 0 16px;padding-inline-start:20px;font-size:14px;}
+.ios-install-box button{width:100%;padding:12px;border:none;border-radius:12px;background:var(--accent);color:#fff;font-family:'Tajawal',sans-serif;font-weight:800;font-size:14px;cursor:pointer;}
 </style>
 
 <!-- OneSignal — إشعارات Push حقيقية تصل حتى لو التطبيق مقفول تمامًا -->
@@ -1429,6 +1445,47 @@ nav.bottom button{ min-width:0; white-space:nowrap; }
     }catch(e){ console.error('[WZAuth] فشل تحميل محتوى التطبيق:', e); }
   })();
 </script>
+<script>
+/* ===== تثبيت التطبيق بضغطة زر ===== */
+(function(){
+  var deferredPrompt=null;
+  var isStandalone=function(){return window.matchMedia('(display-mode: standalone)').matches||window.navigator.standalone===true;};
+  var isIOS=/iphone|ipad|ipod/i.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+  var btn=null;
+  function show(){ if(btn&&!isStandalone()) btn.classList.add('show'); }
+  function hide(){ if(btn) btn.classList.remove('show'); }
+
+  // أندرويد / كروم / إيدج: الحدث بيوصل مرة واحدة، نحتفظ بيه
+  window.addEventListener('beforeinstallprompt',function(e){
+    e.preventDefault(); deferredPrompt=e; show();
+  });
+  window.addEventListener('appinstalled',function(){
+    deferredPrompt=null; hide();
+    try{ if(typeof toast==='function') toast('تم تثبيت التطبيق ✅'); }catch(_){}
+  });
+
+  document.addEventListener('DOMContentLoaded',function(){
+    btn=document.getElementById('installBtn');
+    if(!btn) return;
+    if(deferredPrompt) show();
+    // آيفون: مفيش تثبيت برمجي، فنعرض الزرار مع شرح سريع
+    if(isIOS&&!isStandalone()) show();
+
+    btn.addEventListener('click',function(){
+      if(deferredPrompt){
+        deferredPrompt.prompt();
+        deferredPrompt.userChoice.then(function(){ deferredPrompt=null; hide(); });
+      } else if(isIOS){
+        document.getElementById('iosInstallOverlay').classList.add('show');
+      }
+    });
+    var ov=document.getElementById('iosInstallOverlay');
+    if(ov){
+      ov.addEventListener('click',function(e){ if(e.target===ov||e.target.id==='iosInstallClose') ov.classList.remove('show'); });
+    }
+  });
+})();
+</script>
 </head>
 <body data-theme="light">
 <div id="app">
@@ -1442,6 +1499,7 @@ nav.bottom button{ min-width:0; white-space:nowrap; }
         </div>
       </div>
       <div style="display:flex;gap:8px;align-items:center;">
+        <button class="install-btn" id="installBtn" title="تثبيت التطبيق">⬇️ تثبيت</button>
         <button class="icon-btn" id="themeBtn" title="الوضع الليلي">🌙</button>
         <button class="icon-btn" id="settingsBtn" title="الإعدادات">⚙️</button>
       </div>
@@ -1460,6 +1518,18 @@ nav.bottom button{ min-width:0; white-space:nowrap; }
 </div>
 
 <div class="toast" id="toast"></div>
+
+<div class="ios-install-overlay" id="iosInstallOverlay">
+  <div class="ios-install-box">
+    <h3>تثبيت التطبيق على الآيفون</h3>
+    <ol>
+      <li>افتح الموقع من متصفح <b>Safari</b></li>
+      <li>اضغط على زر المشاركة <b>⬆️</b> أسفل الشاشة</li>
+      <li>اختر <b>"إضافة إلى الشاشة الرئيسية"</b></li>
+    </ol>
+    <button id="iosInstallClose">تمام</button>
+  </div>
+</div>
 
 <script>
 /* QR Code Generator for JavaScript — Kazuhiko Arase — MIT License (bundled locally for offline use) */
@@ -5582,14 +5652,6 @@ function renderStats(){
 /* ===== SETTINGS ===== */
 function renderSettings(){
   main.innerHTML = `
-    <div class="section-title"><span class="dot"></span>تثبيت التطبيق</div>
-    <div class="settings-group">
-      <div class="settings-row">
-        <div class="l"><span class="ic">📲</span>تثبيت التطبيق على الجهاز</div>
-        <button class="act-btn" id="installAppBtn">تثبيت</button>
-      </div>
-    </div>
-
     <div class="section-title"><span class="dot"></span>المظهر</div>
     <div class="settings-group">
       <div class="settings-row"><div class="l"><span class="ic">🌙</span>الوضع الليلي</div><div class="switch ${state.theme==='dark'?'on':''}" id="darkSwitch"></div></div>
@@ -5801,8 +5863,6 @@ function renderSettings(){
     const text = encodeURIComponent('وَذَكِّر — تطبيق الأذكار الإسلامية اليومية 🌿\n' + link);
     window.open('https://wa.me/?text='+text, '_blank', 'noopener');
   };
-
-  $('#installAppBtn').onclick = ()=>{ if(window.openInstallPopup) window.openInstallPopup(); };
 
   $('#checkUpdateBtn').onclick = ()=>{
     const btn = $('#checkUpdateBtn');
@@ -6112,104 +6172,6 @@ if ('serviceWorker' in navigator) {
     });
   });
 }
-/* ================= نافذة تثبيت التطبيق (PWA Install Prompt) ================= */
-(function(){
-  const DISMISS_KEY = 'wazakkir_install_dismissed_at';
-  const DISMISS_DAYS = 7;          // بعد "لاحقًا" مننتظر 7 أيام قبل ما نظهرها تاني
-  const SHOW_DELAY_MS = 0;         // تظهر فورًا أول ما التطبيق يفتح
-  let deferredPrompt = null;
-
-  const isStandalone = () =>
-    window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
-  const isIOS = () => /iphone|ipad|ipod/i.test(navigator.userAgent) && !window.MSStream;
-
-  function recentlyDismissed(){
-    try{
-      const t = parseInt(localStorage.getItem(DISMISS_KEY) || '0', 10);
-      return t && (Date.now() - t) < DISMISS_DAYS * 86400000;
-    }catch(e){ return false; }
-  }
-  function markDismissed(){ try{ localStorage.setItem(DISMISS_KEY, String(Date.now())); }catch(e){} }
-
-  function removePopup(){
-    const el = document.getElementById('installPopup');
-    if(el){ el.style.opacity = '0'; setTimeout(()=>el.remove(), 250); }
-  }
-
-  function showInstallPopup(){
-    if(document.getElementById('installPopup') || isStandalone() || recentlyDismissed()) return;
-    const manual = !deferredPrompt;   // مفيش نافذة تثبيت رسمية (آيفون، أو المتصفح لم يرسلها)
-
-    const wrap = document.createElement('div');
-    wrap.id = 'installPopup';
-    wrap.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:210;display:flex;'
-      +'align-items:flex-end;justify-content:center;padding:16px;opacity:0;transition:opacity .25s;font-family:Tajawal,sans-serif;';
-    wrap.innerHTML = `
-      <div style="background:var(--surface-solid);color:var(--text);width:100%;max-width:420px;border-radius:22px;
-        padding:22px 20px 18px;box-shadow:0 20px 50px rgba(0,0,0,.35);border:1px solid var(--border);text-align:center;
-        margin-bottom:env(safe-area-inset-bottom,0);">
-        <img src="icons/icon-192.png" alt="" style="width:64px;height:64px;border-radius:16px;margin-bottom:10px;box-shadow:0 4px 12px rgba(0,0,0,.2);">
-        <h3 style="margin:0 0 6px;font-family:Amiri,serif;font-size:22px;color:var(--accent);">ثبّت تطبيق وَذَكِّر</h3>
-        <p style="margin:0 0 16px;font-size:13px;line-height:1.8;color:var(--text-soft);">
-          ${manual
-            ? (isIOS()
-                ? 'اضغط على زر المشاركة <b>⬆️</b> في أسفل المتصفح، ثم اختر <b>«إضافة إلى الشاشة الرئيسية»</b>.'
-                : 'افتح قائمة المتصفح <b>⋮</b> ثم اختر <b>«تثبيت التطبيق»</b> أو <b>«إضافة إلى الشاشة الرئيسية»</b>.')
-            : 'أضِف التطبيق إلى شاشتك الرئيسية لتفتحه بسرعة وتستخدمه حتى بدون إنترنت.'}
-        </p>
-        <div style="display:flex;gap:10px;">
-          ${manual ? '' : `<button id="installNowBtn" style="flex:2;background:var(--gold-500);color:var(--sage-900);border:none;border-radius:12px;
-            padding:12px;font-family:Tajawal;font-size:15px;font-weight:800;cursor:pointer;">تثبيت</button>`}
-          <button id="installLaterBtn" style="flex:1;background:transparent;color:var(--text-soft);border:1px solid var(--border);
-            border-radius:12px;padding:12px;font-family:Tajawal;font-size:14px;font-weight:700;cursor:pointer;">${manual ? 'تمام' : 'لاحقًا'}</button>
-        </div>
-      </div>`;
-    document.body.appendChild(wrap);
-    requestAnimationFrame(()=>{ wrap.style.opacity = '1'; });
-
-    document.getElementById('installLaterBtn').onclick = ()=>{ markDismissed(); removePopup(); };
-    wrap.addEventListener('click', e=>{ if(e.target === wrap){ markDismissed(); removePopup(); } });
-
-    const installBtn = document.getElementById('installNowBtn');
-    if(installBtn){
-      installBtn.onclick = async ()=>{
-        if(!deferredPrompt){ removePopup(); return; }
-        deferredPrompt.prompt();                       // نافذة التثبيت الرسمية من المتصفح
-        const { outcome } = await deferredPrompt.userChoice;
-        deferredPrompt = null;
-        if(outcome !== 'accepted') markDismissed();
-        removePopup();
-      };
-    }
-  }
-
-  // كروم / إيدج / سامسونج (أندرويد + ديسكتوب): المتصفح يبعت الحدث لما التطبيق يبقى قابل للتثبيت
-  window.addEventListener('beforeinstallprompt', e=>{
-    e.preventDefault();
-    deferredPrompt = e;
-    setTimeout(showInstallPopup, SHOW_DELAY_MS);
-  });
-
-  // بعد التثبيت الناجح
-  window.addEventListener('appinstalled', ()=>{
-    deferredPrompt = null;
-    removePopup();
-    try{ toast('تم تثبيت التطبيق ✅'); }catch(e){}
-  });
-
-  // آيفون/آيباد (سفاري): مفيش beforeinstallprompt، فنعرض إرشاد يدوي
-  window.addEventListener('load', ()=>{
-    if(isIOS() && !isStandalone()) showInstallPopup();
-  });
-
-  // لو حبيت تفتحها من زر في الإعدادات: window.openInstallPopup()
-  window.openInstallPopup = function(){
-    try{ localStorage.removeItem(DISMISS_KEY); }catch(e){}
-    if(isStandalone()){ try{ toast('التطبيق مثبّت بالفعل ✅'); }catch(e){} return; }
-    showInstallPopup();
-  };
-})();
-
 // Update theme-color meta on theme change
 const themeMetaColor = document.getElementById('themeMetaColor');
 function updateThemeMeta() {
